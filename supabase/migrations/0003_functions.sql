@@ -1,17 +1,17 @@
 -- Server-side scoring and leaderboard queries.
 
 create or replace function public.lagos_day_start() returns timestamptz
-language sql stable as $$
+language sql stable set search_path = public as $$
   select date_trunc('day', now() at time zone 'Africa/Lagos') at time zone 'Africa/Lagos'
 $$;
 
 create or replace function public.lagos_week_start() returns timestamptz
-language sql stable as $$
+language sql stable set search_path = public as $$
   select date_trunc('week', now() at time zone 'Africa/Lagos') at time zone 'Africa/Lagos'
 $$;
 
 create or replace function public.title_for(p int) returns text
-language sql immutable as $$
+language sql immutable set search_path = public as $$
   select case
     when p >= 5000 then 'Kpai Master'
     when p >= 1500 then 'Oga'
