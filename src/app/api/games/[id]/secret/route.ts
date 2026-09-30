@@ -8,7 +8,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   const { id } = await ctx.params;
   const player = await requirePlayer(req);
   const { secret } = await readJson<{ secret?: string }>(req);
-  const { game } = await loadGame(id, player.id);
+  const { game, slot } = await loadGame(id, player.id);
   if (game.status !== "setting_secrets") throw new HttpError(409, "not_setting_secrets");
   const s = String(secret ?? "");
   if (codeProblem(s, game.digit_length)) throw new HttpError(400, "bad_secret");
@@ -19,6 +19,8 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     if (error.code === "23505") throw new HttpError(409, "secret_already_locked");
     throw error;
   }
+
+  await admin.from("games").update(slot === 0 ? { p1_ready: true } : { p2_ready: true }).eq("id", id);
 
   const { count } = await admin.from("game_secrets").select("player_id", { count: "exact", head: true }).eq("game_id", id);
   if (count === 2) {

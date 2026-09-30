@@ -19,6 +19,8 @@ export interface GameRow {
   last_seen_p1: string;
   last_seen_p2: string | null;
   rematch_game_id: string | null;
+  p1_ready: boolean;
+  p2_ready: boolean;
 }
 
 export const secondsSince = (iso: string | null) => (iso ? (Date.now() - new Date(iso).getTime()) / 1000 : 0);

@@ -1,5 +1,5 @@
 "use client";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
 
@@ -17,15 +17,22 @@ export function getSupabase(): SupabaseClient | null {
   return client;
 }
 
-/** Returns a signed-in session, creating an anonymous one on first visit. */
-export async function ensureSession() {
+let sessionPromise: Promise<Session | null> | null = null;
+
+/** Returns a signed-in session, creating an anonymous one on first visit (only ever one in flight). */
+export function ensureSession(): Promise<Session | null> {
   const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb.auth.getSession();
-  if (data.session) return data.session;
-  const res = await sb.auth.signInAnonymously();
-  if (res.error) throw res.error;
-  return res.data.session;
+  if (!sb) return Promise.resolve(null);
+  sessionPromise ??= (async () => {
+    const { data } = await sb.auth.getSession();
+    if (data.session) return data.session;
+    const res = await sb.auth.signInAnonymously();
+    if (res.error) throw res.error;
+    return res.data.session;
+  })().finally(() => {
+    sessionPromise = null;
+  });
+  return sessionPromise;
 }
 
 /** Calls a Next.js route handler with the player's access token. */
