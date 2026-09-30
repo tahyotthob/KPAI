@@ -2,6 +2,8 @@
 import Link from "next/link";
 import MuteToggle from "@/components/MuteToggle";
 import { useState } from "react";
+import TitleBadge from "@/components/TitleBadge";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { nicknameMessage, usePlayer } from "@/hooks/usePlayer";
 
 const BTNS = [
@@ -15,6 +17,7 @@ const BTNS = [
 
 export default function Home() {
   const { nickname, setNickname, save, profile, status } = usePlayer();
+  const top = useLeaderboard("all", 5, false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const onSave = async () => {
@@ -65,6 +68,21 @@ export default function Home() {
           </Link>
         ))}
       </div>
+      {top.configured && top.rows && top.rows.length > 0 && (
+        <Link href="/leaderboard" className="card p-3 block" aria-label="Top 5 players">
+          <div className="text-xs uppercase tracking-widest text-white/50 mb-2">🏆 Top 5</div>
+          <ol className="flex flex-col gap-1.5">
+            {top.rows.slice(0, 5).map((r) => (
+              <li key={r.player_id} className="flex items-center gap-2 text-sm">
+                <span className="w-5 text-center font-num font-black text-gold">{r.rank}</span>
+                <span className="font-bold truncate">{r.nickname}</span>
+                <TitleBadge title={r.title} />
+                <span className="ml-auto font-num font-black text-gold">{r.points}</span>
+              </li>
+            ))}
+          </ol>
+        </Link>
+      )}
     </main>
   );
 }

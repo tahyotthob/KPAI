@@ -6,6 +6,11 @@ import { requireUser } from "@/lib/server/auth";
 export const GET = handle(async (req: Request) => {
   const user = await requireUser(req);
   const { data } = await getAdmin().from("players").select("id, nickname, is_anonymous").eq("id", user.id).maybeSingle();
+  if (data && data.is_anonymous !== user.isAnonymous) {
+    // the player linked Google / email since last time
+    await getAdmin().from("players").update({ is_anonymous: user.isAnonymous }).eq("id", user.id);
+    data.is_anonymous = user.isAnonymous;
+  }
   return ok({ profile: data });
 });
 

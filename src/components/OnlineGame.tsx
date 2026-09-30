@@ -17,6 +17,7 @@ import RedFlash from "./RedFlash";
 import SecretEntry from "./SecretEntry";
 import ShareRoom from "./ShareRoom";
 import SpeechBubble from "./SpeechBubble";
+import TitleBadge from "./TitleBadge";
 
 const ERRORS: Record<string, string> = {
   not_your_turn: "E never reach your turn.",
@@ -212,7 +213,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
       <div className="card p-3 flex items-center gap-3">
         <Avatar emoji="🧑🏾" color={opponent?.online ? "#1faa59" : "#6b7280"} />
         <div className="min-w-0">
-          <div className="font-display truncate">{oppName}</div>
+          <div className="font-display truncate">{oppName} <TitleBadge title={opponent?.title} /></div>
           <div className="text-xs text-white/60">
             <span className={`inline-block w-2 h-2 rounded-full mr-1 ${opponent?.online ? "bg-naija" : "bg-gray-500"}`} />
             {opponent?.online ? "online" : "offline"} · {myTurn ? "your turn" : "their turn"}

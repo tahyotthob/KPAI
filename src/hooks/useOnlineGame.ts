@@ -28,6 +28,7 @@ export function useOnlineGame(gameId: string, myId: string | undefined) {
   const [game, setGame] = useState<OnlineGameRow | null>(null);
   const [moves, setMoves] = useState<[Move[], Move[]]>([[], []]);
   const [names, setNames] = useState<Record<string, string>>({});
+  const [titles, setTitles] = useState<Record<string, string>>({});
   const [presence, setPresence] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const nameCache = useRef<Record<string, string>>({});
@@ -50,6 +51,8 @@ export function useOnlineGame(gameId: string, myId: string | undefined) {
       const { data: ps } = await sb.from("players").select("id, nickname").in("id", need);
       for (const p of ps ?? []) nameCache.current[p.id] = p.nickname;
       setNames({ ...nameCache.current });
+      const { data: ls } = await sb.from("leaderboard").select("player_id, title").in("player_id", need);
+      setTitles((t) => ({ ...t, ...Object.fromEntries((ls ?? []).map((l) => [l.player_id, l.title as string])) }));
     }
     setError(null);
   }, [gameId]);
@@ -99,6 +102,6 @@ export function useOnlineGame(gameId: string, myId: string | undefined) {
   return {
     game, moves, slot, error, refresh: load,
     me: myId ? (names[myId] ?? "You") : "You",
-    opponent: oppId ? { id: oppId, nickname: names[oppId] ?? "Opponent", online: presence.has(oppId) } : null,
+    opponent: oppId ? { id: oppId, nickname: names[oppId] ?? "Opponent", title: titles[oppId] ?? "Learner", online: presence.has(oppId) } : null,
   };
 }
