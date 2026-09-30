@@ -1,0 +1,187 @@
+"use client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { AGENTS } from "@/lib/agents";
+import { useAgent } from "@/lib/ai/useAgent";
+import { applyGuess, newMatch, randomCode, scoreGuess, skipTurn } from "@/lib/game";
+import type { MatchState, Move } from "@/lib/game";
+import { readLS, writeLS } from "@/hooks/useLocalStorage";
+import { useCountdown } from "@/hooks/useCountdown";
+import Avatar from "./Avatar";
+import CodeInput from "./CodeInput";
+import DigitTracker, { emptyTracker, type TrackerState } from "./DigitTracker";
+import HistoryPanel from "./HistoryPanel";
+import type { Settings } from "./GameSetup";
+
+type Phase = "secret" | "play" | "result";
+
+export default function LocalGame({ mode, settings, nickname }: { mode: "computer" | "practice"; settings: Settings; nickname: string }) {
+  const { length, timer, level } = settings;
+  const agent = AGENTS[level];
+  const think = useAgent();
+
+  const [gameId, setGameId] = useState(() => Math.random().toString(36).slice(2));
+  const [phase, setPhase] = useState<Phase>(mode === "practice" ? "play" : "secret");
+  const [mySecret, setMySecret] = useState("");
+  const cpuSecret = useRef(randomCode(length));
+  const [match, setMatch] = useState<MatchState>(() => newMatch(length));
+  const [thinking, setThinking] = useState(false);
+  const [view, setView] = useState<"me" | "them">("me");
+  const [tracker, setTracker] = useState<TrackerState>(emptyTracker());
+  const token = useRef(0);
+
+  useEffect(() => setTracker(readLS(`kpai:tracker:${gameId}`, emptyTracker())), [gameId]);
+  const updateTracker = (t: TrackerState) => {
+    setTracker(t);
+    writeLS(`kpai:tracker:${gameId}`, t);
+  };
+
+  const myTurn = phase === "play" && match.turn === 0 && match.winner === null && !thinking;
+
+  const finishIf = useCallback((m: MatchState) => {
+    if (m.winner !== null) setPhase("result");
+  }, []);
+
+  const runCpuTurn = useCallback(
+    async (m: MatchState) => {
+      if (mode !== "computer" || m.winner !== null || m.turn !== 1) return;
+      const my = ++token.current;
+      setThinking(true);
+      const guess = await think(level, length, m.moves[1]);
+      if (my !== token.current) return;
+      setThinking(false);
+      const next = applyGuess(m, 1, guess, scoreGuess(mySecret, guess));
+      setMatch(next);
+      finishIf(next);
+    },
+    [mode, think, level, length, mySecret, finishIf],
+  );
+
+  const onGuess = (guess: string) => {
+    if (!myTurn) return;
+    const fb = scoreGuess(cpuSecret.current, guess);
+    if (mode === "practice") {
+      // Practice: solo. Only player 0 ever guesses.
+      const moves: [Move[], Move[]] = [[...match.moves[0], { guess, ...fb }], []];
+      const done = fb.dead === length;
+      const m: MatchState = { ...match, moves, winner: done ? 0 : null };
+      setMatch(m);
+      finishIf(m);
+      return;
+    }
+    const next = applyGuess(match, 0, guess, fb);
+    setMatch(next);
+    finishIf(next);
+    void runCpuTurn(next);
+  };
+
+  const left = useCountdown(timer, myTurn && timer > 0 && mode === "computer", match.moves[0].length, () => {
+    const next = skipTurn(match);
+    setMatch(next);
+    finishIf(next);
+    void runCpuTurn(next);
+  });
+
+  const lockSecret = (code: string) => {
+    setMySecret(code);
+    setPhase("play");
+  };
+
+  const rematch = () => {
+    token.current++;
+    cpuSecret.current = randomCode(length);
+    setMatch(newMatch(length));
+    setMySecret("");
+    setThinking(false);
+    setGameId(Math.random().toString(36).slice(2));
+    setTracker(emptyTracker());
+    setPhase(mode === "practice" ? "play" : "secret");
+  };
+
+  useEffect(() => () => void token.current++, []);
+
+  /* ---------- screens ---------- */
+  if (phase === "secret") {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Avatar emoji={agent.emoji} color={agent.color} />
+          <div className="text-sm text-white/80"><b>{agent.name}</b> don pick im own. Now pick yours.</div>
+        </div>
+        <h2 className="font-display text-2xl text-gold text-center">Set your secret</h2>
+        <p className="text-white/60 text-sm text-center">{length} different digits. Leading 0 is allowed.</p>
+        <CodeInput length={length} masked submitLabel="Lock am 🔒" onSubmit={lockSecret} />
+      </div>
+    );
+  }
+
+  if (phase === "result") {
+    const won = match.winner === 0;
+    const draw = match.winner === "draw";
+    const myGuesses = match.moves[0].length;
+    return (
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="font-display text-5xl text-gold">{draw ? "DRAW!" : won ? "KPAI!" : "DEM DON KPAI YOU"}</div>
+        <p className="text-white/80">
+          {mode === "practice"
+            ? `You crack am in ${myGuesses} guess${myGuesses === 1 ? "" : "es"}.`
+            : draw ? "Both of una crack am. Na tie!" : won ? `You beat ${agent.name} in ${myGuesses} guesses.` : `${agent.name} crack your code in ${match.moves[1].length} guesses.`}
+        </p>
+        <div className="card p-4 w-full flex justify-around">
+          <div><div className="text-xs text-white/50 uppercase">{mode === "practice" ? "The code" : "Your secret"}</div><div className="font-num text-3xl font-black text-gold">{mode === "practice" ? cpuSecret.current : mySecret}</div></div>
+          {mode === "computer" && (
+            <div><div className="text-xs text-white/50 uppercase">{agent.name}</div><div className="font-num text-3xl font-black text-gold">{cpuSecret.current}</div></div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3 w-full">
+          <button className="btn btn-green" onClick={rematch}>Rematch</button>
+          <Link href="/" className="btn btn-dark">Back home</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const shownMoves = view === "me" ? match.moves[0] : match.moves[1];
+  const last = match.moves[0][match.moves[0].length - 1];
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Turn bar */}
+      <div className="card p-3 flex items-center gap-3">
+        {mode === "computer" ? (
+          <>
+            <Avatar emoji={agent.emoji} color={agent.color} thinking={thinking} />
+            <div className="min-w-0">
+              <div className="font-display truncate">{agent.name}</div>
+              <div className="text-xs text-white/60"><span className="inline-block w-2 h-2 rounded-full bg-naija mr-1" />online · {thinking ? "thinking…" : myTurn ? "your turn" : "waiting"}</div>
+            </div>
+          </>
+        ) : (
+          <div>
+            <div className="font-display">Practice · {nickname || "You"}</div>
+            <div className="text-xs text-white/60">Guess the secret {length}-digit code</div>
+          </div>
+        )}
+        <div className="ml-auto text-right">
+          {timer > 0 && mode === "computer" && myTurn && (
+            <div className={`font-num text-2xl font-black ${left <= 5 ? "text-blood" : "text-gold"}`}>{left}s</div>
+          )}
+          <div className="text-xs text-white/60">Guesses: {match.moves[0].length}</div>
+        </div>
+      </div>
+
+      {match.finalTurn && <div className="rounded-xl bg-gold text-ink font-bold text-center p-2">Fairness rule: last turn for {agent.name}!</div>}
+
+      {mode === "computer" && (
+        <div className="grid grid-cols-2 gap-2">
+          <button className={`btn ${view === "me" ? "btn-gold" : "btn-dark"} !py-2`} onClick={() => setView("me")}>Your guesses</button>
+          <button className={`btn ${view === "them" ? "btn-gold" : "btn-dark"} !py-2`} onClick={() => setView("them")}>{agent.name}&apos;s</button>
+        </div>
+      )}
+      <HistoryPanel moves={shownMoves} />
+      {last && view === "me" && last.dead === 0 && last.wounded === 0 && <div className="text-center text-white/60 text-sm">Nothing. Try different digits.</div>}
+
+      <CodeInput length={length} submitLabel="Shoot! 🔫" onSubmit={onGuess} disabled={!myTurn} />
+      <DigitTracker value={tracker} onChange={updateTracker} />
+    </div>
+  );
+}

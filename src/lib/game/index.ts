@@ -4,3 +4,4 @@ export * from "./candidates";
 export * from "./points";
 export * from "./titles";
 export * from "./solvers";
+export * from "./match";
