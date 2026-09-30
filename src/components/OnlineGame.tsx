@@ -17,6 +17,8 @@ import RedFlash from "./RedFlash";
 import SecretEntry from "./SecretEntry";
 import ShareRoom from "./ShareRoom";
 import SpeechBubble from "./SpeechBubble";
+import ChatBar from "./ChatBar";
+import MoveNotice, { type Notice } from "./MoveNotice";
 import TitleBadge from "./TitleBadge";
 
 const ERRORS: Record<string, string> = {
@@ -30,7 +32,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
   const router = useRouter();
   const { profile } = usePlayer();
   const myId = profile?.id;
-  const { game, moves, slot, opponent, me, error, refresh } = useOnlineGame(gameId, myId);
+  const { game, rows, moves, slot, opponent, me, error, refresh, applyLocal, chat, sendChat } = useOnlineGame(gameId, myId);
   const { line, speak } = useSpeech();
 
   const [tracker, setTracker] = useState<TrackerState>(emptyTracker());
@@ -42,6 +44,47 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
   const [reveal, setReveal] = useState<[string | null, string | null] | null>(null);
   const [points, setPoints] = useState<number | null>(null);
   const spoke = useRef<string>("");
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const seen = useRef<number | null>(null);
+  const closeNotice = useCallback(() => setNotice(null), []);
+
+  /* ---- "what did they play?" notification for every new opponent move ---- */
+  useEffect(() => {
+    if (!myId || !game || slot === null) return;
+    const top = rows.length ? rows[rows.length - 1].move_number : 0;
+    if (seen.current === null) {
+      seen.current = top; // first load: don't announce history
+      return;
+    }
+    const fresh = rows.filter((r) => r.move_number > (seen.current as number) && r.player_id !== myId);
+    seen.current = top;
+    const r = fresh[fresh.length - 1];
+    if (!r) return;
+    const theirMoves = rows.filter((x) => x.player_id !== myId);
+    const myMoves = rows.filter((x) => x.player_id === myId);
+    const round = theirMoves.length;
+    const mine = myMoves[round - 1];
+    setNotice({
+      id: r.move_number,
+      who: opponent?.nickname ?? "Opponent",
+      guess: r.guess, dead: r.dead, wounded: r.wounded,
+      round,
+      mine: mine ? { guess: mine.guess, dead: mine.dead, wounded: mine.wounded } : null,
+      yourTurn: game.status === "playing" && game.current_turn === slot,
+    });
+    try { navigator.vibrate?.(120); } catch {}
+  }, [rows, myId, game, slot, opponent?.nickname]);
+
+  /* ---- flash the tab title when it's your turn and the tab is hidden ---- */
+  useEffect(() => {
+    const base = document.title;
+    if (game?.status !== "playing" || !(slot !== null && game?.current_turn === slot)) return;
+    const onHide = () => { if (document.visibilityState === "hidden") document.title = "🎯 Your turn! · KPAI!"; else document.title = base; };
+    onHide();
+    document.addEventListener("visibilitychange", onHide);
+    return () => { document.removeEventListener("visibilitychange", onHide); document.title = base; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.current_turn, game?.status, slot]);
 
   useEffect(() => setTracker(readLS(`kpai:tracker:${gameId}`, emptyTracker())), [gameId]);
   useEffect(() => {
@@ -182,6 +225,8 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
           )}
           <Link href="/" className="btn btn-dark">Back home</Link>
         </div>
+        <MoveNotice notice={notice} onClose={closeNotice} />
+        <div className="w-full text-left"><ChatBar messages={chat} onSend={sendChat} oppName={oppName} /></div>
         {toast && <p className="text-blood">{toast}</p>}
       </div>
     );
@@ -191,16 +236,19 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
   const onGuess = async (guess: string) => {
     if (!myTurn || busy) return;
     setBusy(true);
-    const r = await call<{ dead: number; wounded: number; winner: unknown }>(`/api/games/${gameId}/guess`, { guess });
+    const r = await call<{ dead: number; wounded: number; winner: unknown; moveNumber: number; game: Partial<typeof game> }>(`/api/games/${gameId}/guess`, { guess });
     setBusy(false);
     if (r) {
+      // show our result immediately; the realtime echo is de-duplicated by move number
+      if (myId) applyLocal({ player_id: myId, guess, dead: r.dead, wounded: r.wounded, move_number: r.moveNumber }, r.game ?? {});
+      if (r.winner !== null) void refresh();
       if (r.dead !== len) {
         if (r.dead === 0 && r.wounded === 0) { setFlash((f) => f + 1); speak("zero"); }
         else if (r.dead === len - 1 && len >= 4) speak("close");
         else if (r.dead === 0) speak("wounded");
       }
     }
-    void refresh();
+    if (!r) void refresh();
   };
   const updateTracker = (t: TrackerState) => {
     setTracker(t);
@@ -236,6 +284,8 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
       <SpeechBubble line={line} />
       {toast && <p className="text-center text-blood text-sm" role="alert">{toast}</p>}
       <RedFlash k={flash} />
+      <MoveNotice notice={notice} onClose={closeNotice} />
+      <ChatBar messages={chat} onSend={sendChat} oppName={oppName} />
       <CodeInput length={len} submitLabel={myTurn ? "Shoot! 🔫" : "Wait for am…"} onSubmit={onGuess} disabled={!myTurn || busy} shakeKey={flash} onInvalid={(w) => w === "repeat" && speak("invalid")} />
       <DigitTracker value={tracker} onChange={updateTracker} />
     </div>

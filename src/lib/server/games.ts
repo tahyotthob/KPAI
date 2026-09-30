@@ -22,6 +22,24 @@ export async function loadGame(id: string, userId: string): Promise<{ game: Game
   throw new HttpError(404, "not_found");
 }
 
+export interface MoveRow {
+  player_id: string;
+  guess: string;
+  dead: number;
+  wounded: number;
+  move_number: number;
+}
+
+/** Rebuilds the pure match state from already-fetched database rows. */
+export function buildMatch(game: GameRow, rows: MoveRow[]): MatchState {
+  const s = newMatch(game.digit_length);
+  const moves: [Move[], Move[]] = [[], []];
+  for (const r of rows) {
+    moves[r.player_id === game.player1_id ? 0 : 1].push({ guess: r.guess, dead: r.dead, wounded: r.wounded });
+  }
+  return { ...s, moves, turn: game.current_turn, finalTurn: game.final_turn };
+}
+
 /** Rebuilds the pure match state from the database rows. */
 export async function loadMatch(game: GameRow): Promise<MatchState> {
   const { data, error } = await getAdmin()
@@ -30,12 +48,7 @@ export async function loadMatch(game: GameRow): Promise<MatchState> {
     .eq("game_id", game.id)
     .order("move_number");
   if (error) throw error;
-  const s = newMatch(game.digit_length);
-  const moves: [Move[], Move[]] = [[], []];
-  for (const r of data ?? []) {
-    moves[r.player_id === game.player1_id ? 0 : 1].push({ guess: r.guess, dead: r.dead, wounded: r.wounded });
-  }
-  return { ...s, moves, turn: game.current_turn, finalTurn: game.final_turn };
+  return buildMatch(game, (data ?? []) as MoveRow[]);
 }
 
 export const totalMoves = (m: MatchState) => m.moves[0].length + m.moves[1].length;

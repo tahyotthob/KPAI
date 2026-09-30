@@ -53,7 +53,10 @@ describe("online game routes", () => {
     const id = await setupGame();
     const r = await json(await guess(req(A, { guess: "5670" }), ctx(id)));
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ dead: 3, wounded: 0, winner: null });
+    expect(r.body).toMatchObject({ dead: 3, wounded: 0, winner: null, moveNumber: 1 });
+    // the response carries the new turn state so the client can update instantly
+    expect(r.body.game).toMatchObject({ current_turn: 1, status: "playing", final_turn: false });
+    expect(typeof r.body.game.turn_started_at).toBe("string");
     expect(JSON.stringify(r.body)).not.toContain("5678");
     // the game_secrets table is never part of what a client can select; reveal is blocked until finished
     expect((await json(await reveal(req(A, undefined, "GET"), ctx(id)))).status).toBe(403);

@@ -13,6 +13,7 @@ import CodeInput from "./CodeInput";
 import DigitTracker, { emptyTracker, type TrackerState } from "./DigitTracker";
 import HistoryPanel from "./HistoryPanel";
 import SpeechBubble from "./SpeechBubble";
+import MoveNotice, { type Notice } from "./MoveNotice";
 import Confetti from "./Confetti";
 import KpaiStamp from "./KpaiStamp";
 import RedFlash from "./RedFlash";
@@ -42,6 +43,8 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   const [scored, setScored] = useState<FinishResult | null>(null);
   const [flash, setFlash] = useState(0);
   const hurried = useRef(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const closeNotice = useCallback(() => setNotice(null), []);
 
   const react = useCallback(
     (dead: number, wounded: number) => {
@@ -95,11 +98,17 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
       if (my !== token.current) return;
       setThinking(false);
       events.current.push({ p: 1, g: guess });
-      const next = applyGuess(m, 1, guess, scoreGuess(mySecret, guess));
+      const fb = scoreGuess(mySecret, guess);
+      const next = applyGuess(m, 1, guess, fb);
       setMatch(next);
+      if (fb.dead !== length) {
+        const round = next.moves[1].length;
+        const mine = next.moves[0][round - 1];
+        setNotice({ id: Date.now(), who: agent.name, guess, ...fb, round, mine: mine ?? null, yourTurn: next.winner === null });
+      }
       finishIf(next);
     },
-    [mode, think, level, length, mySecret, finishIf],
+    [mode, think, level, length, mySecret, finishIf, agent.name],
   );
 
   const onGuess = (guess: string) => {
@@ -245,6 +254,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
       {last && view === "me" && last.dead === 0 && last.wounded === 0 && <div className="text-center text-white/60 text-sm">Nothing. Try different digits.</div>}
 
       <SpeechBubble line={line} />
+      <MoveNotice notice={notice} onClose={closeNotice} />
       <RedFlash k={flash} />
       <CodeInput length={length} submitLabel="Shoot! 🔫" onSubmit={onGuess} disabled={!myTurn} shakeKey={flash} onInvalid={(w) => w === "repeat" && speak("invalid")} />
       <DigitTracker value={tracker} onChange={updateTracker} />
