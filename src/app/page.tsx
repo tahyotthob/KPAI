@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import MuteToggle from "@/components/MuteToggle";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 const BTNS = [
@@ -14,7 +15,8 @@ const BTNS = [
 export default function Home() {
   const [nickname, setNickname] = useLocalStorage("kpai:nickname", "");
   return (
-    <main className="mx-auto max-w-md px-4 py-8 flex flex-col gap-5">
+    <main className="mx-auto max-w-md px-4 py-8 flex flex-col gap-5 relative">
+      <div className="absolute right-4 top-4"><MuteToggle /></div>
       <div className="text-center">
         <h1 className="font-display text-7xl text-gold drop-shadow-[0_5px_0_#0d6b36]">KPAI!</h1>
         <p className="font-display text-naija mt-1">Dead or Wounded — naija style</p>

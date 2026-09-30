@@ -11,6 +11,11 @@ import Avatar from "./Avatar";
 import CodeInput from "./CodeInput";
 import DigitTracker, { emptyTracker, type TrackerState } from "./DigitTracker";
 import HistoryPanel from "./HistoryPanel";
+import SpeechBubble from "./SpeechBubble";
+import Confetti from "./Confetti";
+import KpaiStamp from "./KpaiStamp";
+import RedFlash from "./RedFlash";
+import { useSpeech } from "@/hooks/useSpeech";
 import type { Settings } from "./GameSetup";
 
 type Phase = "secret" | "play" | "result";
@@ -29,6 +34,20 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   const [view, setView] = useState<"me" | "them">("me");
   const [tracker, setTracker] = useState<TrackerState>(emptyTracker());
   const token = useRef(0);
+  const { line, speak } = useSpeech();
+  const [flash, setFlash] = useState(0);
+  const hurried = useRef(false);
+
+  const react = useCallback(
+    (dead: number, wounded: number) => {
+      if (dead === 0 && wounded === 0) {
+        setFlash((f) => f + 1);
+        speak("zero");
+      } else if (dead === length - 1 && length >= 4) speak("close");
+      else if (dead === 0) speak("wounded");
+    },
+    [length, speak],
+  );
 
   useEffect(() => setTracker(readLS(`kpai:tracker:${gameId}`, emptyTracker())), [gameId]);
   const updateTracker = (t: TrackerState) => {
@@ -38,9 +57,14 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
 
   const myTurn = phase === "play" && match.turn === 0 && match.winner === null && !thinking;
 
-  const finishIf = useCallback((m: MatchState) => {
-    if (m.winner !== null) setPhase("result");
-  }, []);
+  const finishIf = useCallback(
+    (m: MatchState) => {
+      if (m.winner === null) return;
+      setPhase("result");
+      speak(m.winner === 1 ? "lose" : "win");
+    },
+    [speak],
+  );
 
   const runCpuTurn = useCallback(
     async (m: MatchState) => {
@@ -60,6 +84,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   const onGuess = (guess: string) => {
     if (!myTurn) return;
     const fb = scoreGuess(cpuSecret.current, guess);
+    if (fb.dead !== length) react(fb.dead, fb.wounded);
     if (mode === "practice") {
       // Practice: solo. Only player 0 ever guesses.
       const moves: [Move[], Move[]] = [[...match.moves[0], { guess, ...fb }], []];
@@ -81,6 +106,14 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
     finishIf(next);
     void runCpuTurn(next);
   });
+
+  useEffect(() => {
+    if (myTurn && timer > 0 && left <= 5 && left > 0 && !hurried.current) {
+      hurried.current = true;
+      speak("hurry");
+    }
+    if (left > 5 || !myTurn) hurried.current = false;
+  }, [left, myTurn, timer, speak]);
 
   const lockSecret = (code: string) => {
     setMySecret(code);
@@ -121,7 +154,9 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
     const myGuesses = match.moves[0].length;
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="font-display text-5xl text-gold">{draw ? "DRAW!" : won ? "KPAI!" : "DEM DON KPAI YOU"}</div>
+        {won && <Confetti />}
+        {won || draw ? <KpaiStamp text={draw ? "DRAW!" : "KPAI!"} /> : <div className="font-display text-5xl text-gold">DEM DON KPAI YOU</div>}
+        <SpeechBubble line={line} />
         <p className="text-white/80">
           {mode === "practice"
             ? `You crack am in ${myGuesses} guess${myGuesses === 1 ? "" : "es"}.`
@@ -180,7 +215,9 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
       <HistoryPanel moves={shownMoves} />
       {last && view === "me" && last.dead === 0 && last.wounded === 0 && <div className="text-center text-white/60 text-sm">Nothing. Try different digits.</div>}
 
-      <CodeInput length={length} submitLabel="Shoot! 🔫" onSubmit={onGuess} disabled={!myTurn} />
+      <SpeechBubble line={line} />
+      <RedFlash k={flash} />
+      <CodeInput length={length} submitLabel="Shoot! 🔫" onSubmit={onGuess} disabled={!myTurn} shakeKey={flash} onInvalid={(w) => w === "repeat" && speak("invalid")} />
       <DigitTracker value={tracker} onChange={updateTracker} />
     </div>
   );
