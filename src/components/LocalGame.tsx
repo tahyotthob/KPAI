@@ -4,7 +4,8 @@ import Link from "next/link";
 import { AGENTS } from "@/lib/agents";
 import { useAgent } from "@/lib/ai/useAgent";
 import { applyGuess, newMatch, randomCode, scoreGuess, skipTurn } from "@/lib/game";
-import type { MatchState, Move } from "@/lib/game";
+import type { MatchState, Move, TranscriptEvent } from "@/lib/game";
+import { finishScored, startScored, type FinishResult } from "@/lib/scoring-client";
 import { readLS, writeLS } from "@/hooks/useLocalStorage";
 import { useCountdown } from "@/hooks/useCountdown";
 import Avatar from "./Avatar";
@@ -28,6 +29,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   const [gameId, setGameId] = useState(() => Math.random().toString(36).slice(2));
   const [phase, setPhase] = useState<Phase>(mode === "practice" ? "play" : "secret");
   const [mySecret, setMySecret] = useState("");
+  const mySecretRef = useRef("");
   const cpuSecret = useRef(randomCode(length));
   const [match, setMatch] = useState<MatchState>(() => newMatch(length));
   const [thinking, setThinking] = useState(false);
@@ -35,6 +37,9 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   const [tracker, setTracker] = useState<TrackerState>(emptyTracker());
   const token = useRef(0);
   const { line, speak } = useSpeech();
+  const serverId = useRef<string | null>(null);
+  const events = useRef<TranscriptEvent[]>([]);
+  const [scored, setScored] = useState<FinishResult | null>(null);
   const [flash, setFlash] = useState(0);
   const hurried = useRef(false);
 
@@ -49,6 +54,19 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
     [length, speak],
   );
 
+  // Register the start of a scored game (best effort; the game works fully offline).
+  useEffect(() => {
+    if (phase !== "play") return;
+    let live = true;
+    serverId.current = null;
+    events.current = [];
+    setScored(null);
+    void startScored(mode, length, mode === "computer" ? level : undefined).then((id) => {
+      if (live) serverId.current = id;
+    });
+    return () => void (live = false);
+  }, [phase === "play", gameId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => setTracker(readLS(`kpai:tracker:${gameId}`, emptyTracker())), [gameId]);
   const updateTracker = (t: TrackerState) => {
     setTracker(t);
@@ -61,9 +79,11 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
     (m: MatchState) => {
       if (m.winner === null) return;
       setPhase("result");
+      const secrets = mode === "practice" ? [cpuSecret.current] : [mySecretRef.current, cpuSecret.current];
+      void finishScored(serverId.current, secrets, events.current).then(setScored);
       speak(m.winner === 1 ? "lose" : "win");
     },
-    [speak],
+    [speak, mode],
   );
 
   const runCpuTurn = useCallback(
@@ -74,6 +94,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
       const guess = await think(level, length, m.moves[1]);
       if (my !== token.current) return;
       setThinking(false);
+      events.current.push({ p: 1, g: guess });
       const next = applyGuess(m, 1, guess, scoreGuess(mySecret, guess));
       setMatch(next);
       finishIf(next);
@@ -85,6 +106,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
     if (!myTurn) return;
     const fb = scoreGuess(cpuSecret.current, guess);
     if (fb.dead !== length) react(fb.dead, fb.wounded);
+    events.current.push({ p: 0, g: guess });
     if (mode === "practice") {
       // Practice: solo. Only player 0 ever guesses.
       const moves: [Move[], Move[]] = [[...match.moves[0], { guess, ...fb }], []];
@@ -101,6 +123,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   };
 
   const left = useCountdown(timer, myTurn && timer > 0 && mode === "computer", match.moves[0].length, () => {
+    events.current.push({ p: 0, g: null });
     const next = skipTurn(match);
     setMatch(next);
     finishIf(next);
@@ -116,6 +139,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   }, [left, myTurn, timer, speak]);
 
   const lockSecret = (code: string) => {
+    mySecretRef.current = code;
     setMySecret(code);
     setPhase("play");
   };
@@ -168,6 +192,11 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
             <div><div className="text-xs text-white/50 uppercase">{agent.name}</div><div className="font-num text-3xl font-black text-gold">{cpuSecret.current}</div></div>
           )}
         </div>
+        {scored && (
+          <div className="card p-3 w-full" role="status">
+            {scored.rejected ? "Game too short to count for points." : <>You get <b className="text-gold">+{scored.points} KPAI Points</b> 🏆</>}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3 w-full">
           <button className="btn btn-green" onClick={rematch}>Rematch</button>
           <Link href="/" className="btn btn-dark">Back home</Link>

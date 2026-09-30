@@ -4,13 +4,13 @@ import { notFound } from "next/navigation";
 import GameSetup, { type Settings } from "@/components/GameSetup";
 import Header from "@/components/Header";
 import LocalGame from "@/components/LocalGame";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { usePlayer } from "@/hooks/usePlayer";
 
 const TITLES = { computer: "Vs Computer", practice: "Practice", pass: "Pass-and-Play" } as const;
 
 export default function PlayPage({ params }: { params: Promise<{ mode: string }> }) {
   const { mode } = use(params);
-  const [nickname] = useLocalStorage("kpai:nickname", "");
+  const { nickname } = usePlayer();
   const [settings, setSettings] = useState<Settings | null>(null);
   if (!(mode in TITLES)) notFound();
 
