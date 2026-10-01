@@ -12,6 +12,8 @@ import DigitTracker, { emptyTracker, type TrackerState } from "./DigitTracker";
 import HandPhone from "./HandPhone";
 import HistoryPanel, { FeedbackIcons, feedbackText } from "./HistoryPanel";
 import KpaiStamp from "./KpaiStamp";
+import TimerRing from "./TimerRing";
+import AnimatedNumber from "./AnimatedNumber";
 import RedFlash from "./RedFlash";
 import SecretEntry from "./SecretEntry";
 import SpeechBubble from "./SpeechBubble";
@@ -107,7 +109,7 @@ export default function PassGame({ settings, names }: { settings: Settings; name
   if (stage === "result") {
     const w = match.winner;
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
+      <div className="flex flex-col items-center gap-4 text-center bigshake">
         {w !== "draw" && <Confetti />}
         <KpaiStamp text={w === "draw" ? "DRAW!" : "KPAI!"} />
         <p className="font-display text-2xl">{w === "draw" ? "Both of una crack am!" : `${names[w as 0 | 1]} wins!`}</p>
@@ -121,7 +123,7 @@ export default function PassGame({ settings, names }: { settings: Settings; name
             </div>
           ))}
         </div>
-        {scored && <div className="card p-3 w-full" role="status">{scored.rejected ? "Game too short to count for points." : <>{names[0]} gets <b className="text-gold">+{scored.points} KPAI Points</b> 🏆</>}</div>}
+        {scored && <div className="card p-3 w-full" role="status">{scored.rejected ? "Game too short to count for points." : <>{names[0]} gets <b className="text-gold text-xl"><AnimatedNumber prefix="+" value={scored.points} /> KPAI Points</b> 🏆</>}</div>}
         <div className="grid grid-cols-2 gap-3 w-full">
           <button className="btn btn-green" onClick={rematch}>Rematch</button>
           <Link href="/" className="btn btn-dark">Back home</Link>
@@ -162,7 +164,7 @@ export default function PassGame({ settings, names }: { settings: Settings; name
           <div className="text-xs text-white/60">Guess {names[turn === 0 ? 1 : 0]}&apos;s code</div>
         </div>
         <div className="ml-auto text-right">
-          {timer > 0 && <div className={`font-num text-2xl font-black ${left <= 5 ? "text-blood" : "text-gold"}`}>{left}s</div>}
+          {timer > 0 && <TimerRing left={left} total={timer} />}
           <div className="text-xs text-white/60">Guesses: {match.moves[turn].length}</div>
         </div>
       </div>

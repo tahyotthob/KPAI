@@ -1,5 +1,5 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useEffect } from "react";
 import { FeedbackIcons, feedbackText } from "./HistoryPanel";
 
@@ -29,7 +29,7 @@ export default function MoveNotice({ notice, onClose, ms = 6500 }: { notice: Not
     <div className="fixed inset-x-0 top-16 z-50 px-4 pointer-events-none flex justify-center" role="status" aria-live="polite">
       <AnimatePresence>
         {notice && (
-          <motion.button
+          <m.button
             key={notice.id}
             type="button"
             onClick={onClose}
@@ -58,7 +58,7 @@ export default function MoveNotice({ notice, onClose, ms = 6500 }: { notice: Not
               </div>
             )}
             {notice.yourTurn && <div className="mt-1 text-naija font-bold text-sm">Your turn now! 🔫</div>}
-          </motion.button>
+          </m.button>
         )}
       </AnimatePresence>
     </div>

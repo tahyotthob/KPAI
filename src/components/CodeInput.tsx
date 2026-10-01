@@ -1,4 +1,5 @@
 "use client";
+import { m } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { codeProblem } from "@/lib/game";
 
@@ -73,7 +74,15 @@ export default function CodeInput({ length, submitLabel, onSubmit, onInvalid, di
             }`}
             aria-label={`digit ${i + 1}`}
           >
-            {value[i] ? (shown ? "●" : value[i]) : ""}
+            {value[i] ? (
+              <m.span key={value[i]} className="inline-block" initial={{ scale: 0.2, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 600, damping: 16 }}>
+                {shown ? "●" : value[i]}
+              </m.span>
+            ) : i === value.length ? (
+              <span className="cursor-blink text-gold/80">|</span>
+            ) : (
+              ""
+            )}
           </div>
         ))}
         {masked && (
@@ -117,7 +126,7 @@ export default function CodeInput({ length, submitLabel, onSubmit, onInvalid, di
       </div>
 
       <button
-        className="btn btn-gold w-full h-16 mt-3 text-2xl font-display"
+        className={`btn btn-gold w-full h-16 mt-3 text-2xl font-display ${value.length === length ? "pulse-ready" : ""}`}
         onClick={submit}
         disabled={disabled || value.length !== length}
       >

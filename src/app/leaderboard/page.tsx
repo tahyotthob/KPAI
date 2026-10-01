@@ -1,4 +1,5 @@
 "use client";
+import { m } from "framer-motion";
 import { useState } from "react";
 import Header from "@/components/Header";
 import RankSaver from "@/components/RankSaver";
@@ -15,10 +16,10 @@ const TABS: { v: BoardWindow; label: string }[] = [
 const num = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? "–" : Number(n).toFixed(d).replace(/\.0+$/, ""));
 const medal = (r: number) => (r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : r);
 
-function Row({ r, mine }: { r: BoardRow; mine: boolean }) {
+function Row({ r, mine, i = 0 }: { r: BoardRow; mine: boolean; i?: number }) {
   return (
-    <tr className={mine ? "bg-gold/15" : "border-t border-white/5"}>
-      <td className="px-2 py-2 text-center font-num font-black">{medal(r.rank)}</td>
+    <m.tr initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 12) * 0.04, type: "spring", stiffness: 300, damping: 24 }} className={mine ? "bg-gold/15" : "border-t border-white/5"}>
+      <td className="px-2 py-2 text-center font-num font-black">{r.rank <= 3 ? <m.span className="inline-block" animate={{ rotate: [0, -12, 12, 0] }} transition={{ repeat: Infinity, repeatDelay: 3 + r.rank, duration: 0.7 }}>{medal(r.rank)}</m.span> : medal(r.rank)}</td>
       <td className="px-2 py-2">
         <div className="font-bold truncate max-w-[9rem]">{r.nickname}{mine && " (you)"}</div>
         <TitleBadge title={r.title} />
@@ -28,7 +29,7 @@ function Row({ r, mine }: { r: BoardRow; mine: boolean }) {
       <td className="px-2 py-2 text-right font-num">{num(r.win_rate, 0)}%</td>
       <td className="px-2 py-2 text-right font-num">{num(r.avg_guesses)}</td>
       <td className="px-2 py-2 text-right font-num">{num(r.best_guesses, 0)}</td>
-    </tr>
+    </m.tr>
   );
 }
 
@@ -65,7 +66,7 @@ export default function LeaderboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows?.map((r) => <Row key={r.player_id} r={r} mine={r.player_id === myId} />)}
+                {rows?.map((r, i) => <Row key={`${tab}-${r.player_id}`} r={r} mine={r.player_id === myId} i={i} />)}
               </tbody>
             </table>
             {rows === null && !error && <p className="text-center text-white/50 py-8">Loading…</p>}

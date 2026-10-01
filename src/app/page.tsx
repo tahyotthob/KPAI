@@ -1,4 +1,5 @@
 "use client";
+import { m } from "framer-motion";
 import Link from "next/link";
 import MuteToggle from "@/components/MuteToggle";
 import { useState } from "react";
@@ -35,8 +36,24 @@ export default function Home() {
     <main className="mx-auto max-w-md px-4 py-8 flex flex-col gap-5 relative">
       <div className="absolute right-4 top-4"><MuteToggle /></div>
       <div className="text-center">
-        <h1 className="font-display text-7xl text-gold drop-shadow-[0_5px_0_#0d6b36]">KPAI!</h1>
-        <p className="font-display text-naija mt-1">Dead or Wounded — naija style</p>
+        <h1 className="font-display text-7xl text-gold drop-shadow-[0_5px_0_#0d6b36] flex justify-center" aria-label="KPAI!">
+          {"KPAI!".split("").map((ch, i) => (
+            <m.span
+              key={i}
+              aria-hidden
+              className="inline-block"
+              initial={{ y: -120, opacity: 0, rotate: -25, scale: 1.6 }}
+              animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
+              transition={{ type: "spring", stiffness: 380, damping: 11, delay: 0.1 + i * 0.1 }}
+              whileHover={{ y: -8, rotate: i % 2 ? 6 : -6 }}
+            >
+              {ch}
+            </m.span>
+          ))}
+        </h1>
+        <m.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="font-display shimmer-text mt-1">
+          Dead or Wounded — naija style
+        </m.p>
       </div>
       <div>
         <div className="flex gap-2">
@@ -62,10 +79,12 @@ export default function Home() {
         {status === "offline" && <p className="text-sm mt-2 text-white/50">Backend not connected: online play and ranking are off, offline modes work fine.</p>}
       </div>
       <div className="flex flex-col gap-3">
-        {BTNS.map((b) => (
-          <Link key={b.href} href={b.href} className={`btn ${b.cls} text-lg h-14`}>
-            <span>{b.icon}</span> {b.label}
-          </Link>
+        {BTNS.map((b, i) => (
+          <m.div key={b.href} initial={{ x: i % 2 ? 60 : -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 22, delay: 0.5 + i * 0.07 }} whileTap={{ scale: 0.97 }}>
+            <Link href={b.href} className={`btn ${b.cls} text-lg h-14 w-full`}>
+              <m.span animate={{ rotate: [0, -12, 12, 0] }} transition={{ delay: 1.2 + i * 0.15, duration: 0.6 }} className="inline-block">{b.icon}</m.span> {b.label}
+            </Link>
+          </m.div>
         ))}
       </div>
       {top.configured && top.rows && top.rows.length > 0 && (

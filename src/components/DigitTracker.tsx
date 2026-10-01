@@ -1,4 +1,5 @@
 "use client";
+import { m } from "framer-motion";
 
 /** 0 = unknown, 1 = ruled out, 2 = confirmed */
 export type TrackerState = number[];
@@ -15,8 +16,12 @@ export default function DigitTracker({ value, onChange }: { value: TrackerState;
       <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Note pad · tap to cycle</div>
       <div className="grid grid-cols-10 gap-1">
         {value.map((s, d) => (
-          <button
-            key={d}
+          <m.button
+            key={`${d}-${s}`}
+            initial={{ scale: 0.6, rotateX: 90 }}
+            animate={{ scale: 1, rotateX: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 16 }}
+            whileTap={{ scale: 0.88 }}
             onClick={() => cycle(d)}
             aria-label={`Digit ${d}: ${["unknown", "ruled out", "confirmed"][s]}`}
             className={`font-num rounded-lg py-2 text-lg font-black border-2 transition ${
@@ -28,7 +33,7 @@ export default function DigitTracker({ value, onChange }: { value: TrackerState;
             }`}
           >
             {d}
-          </button>
+          </m.button>
         ))}
       </div>
     </div>

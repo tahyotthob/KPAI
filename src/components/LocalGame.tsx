@@ -16,6 +16,10 @@ import SpeechBubble from "./SpeechBubble";
 import MoveNotice, { type Notice } from "./MoveNotice";
 import Confetti from "./Confetti";
 import KpaiStamp from "./KpaiStamp";
+import GuessBurst, { type Burst } from "./GuessBurst";
+import TimerRing from "./TimerRing";
+import AnimatedNumber from "./AnimatedNumber";
+import LoseBanner from "./LoseBanner";
 import RedFlash from "./RedFlash";
 import { useSpeech } from "@/hooks/useSpeech";
 import type { Settings } from "./GameSetup";
@@ -44,6 +48,8 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   const [flash, setFlash] = useState(0);
   const hurried = useRef(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [burst, setBurst] = useState<Burst | null>(null);
+  const closeBurst = useCallback(() => setBurst(null), []);
   const closeNotice = useCallback(() => setNotice(null), []);
 
   const react = useCallback(
@@ -114,7 +120,10 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
   const onGuess = (guess: string) => {
     if (!myTurn) return;
     const fb = scoreGuess(cpuSecret.current, guess);
-    if (fb.dead !== length) react(fb.dead, fb.wounded);
+    if (fb.dead !== length) {
+      react(fb.dead, fb.wounded);
+      setBurst({ id: Date.now(), dead: fb.dead, wounded: fb.wounded, close: fb.dead === length - 1 && length >= 4 });
+    }
     events.current.push({ p: 0, g: guess });
     if (mode === "practice") {
       // Practice: solo. Only player 0 ever guesses.
@@ -186,9 +195,9 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
     const draw = match.winner === "draw";
     const myGuesses = match.moves[0].length;
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
+      <div className={`flex flex-col items-center gap-4 text-center ${won ? "bigshake" : ""}`}>
         {won && <Confetti />}
-        {won || draw ? <KpaiStamp text={draw ? "DRAW!" : "KPAI!"} /> : <div className="font-display text-5xl text-gold">DEM DON KPAI YOU</div>}
+        {won || draw ? <KpaiStamp text={draw ? "DRAW!" : "KPAI!"} /> : <LoseBanner />}
         <SpeechBubble line={line} />
         <p className="text-white/80">
           {mode === "practice"
@@ -203,7 +212,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
         </div>
         {scored && (
           <div className="card p-3 w-full" role="status">
-            {scored.rejected ? "Game too short to count for points." : <>You get <b className="text-gold">+{scored.points} KPAI Points</b> 🏆</>}
+            {scored.rejected ? "Game too short to count for points." : <>You get <b className="text-gold text-xl"><AnimatedNumber prefix="+" value={scored.points} /> KPAI Points</b> 🏆</>}
           </div>
         )}
         <div className="grid grid-cols-2 gap-3 w-full">
@@ -222,7 +231,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
       <div className="card p-3 flex items-center gap-3">
         {mode === "computer" ? (
           <>
-            <Avatar emoji={agent.emoji} color={agent.color} thinking={thinking} />
+            <Avatar emoji={agent.emoji} color={agent.color} thinking={thinking} active={thinking} />
             <div className="min-w-0">
               <div className="font-display truncate">{agent.name}</div>
               <div className="text-xs text-white/60"><span className="inline-block w-2 h-2 rounded-full bg-naija mr-1" />online · {thinking ? "thinking…" : myTurn ? "your turn" : "waiting"}</div>
@@ -235,9 +244,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
           </div>
         )}
         <div className="ml-auto text-right">
-          {timer > 0 && mode === "computer" && myTurn && (
-            <div className={`font-num text-2xl font-black ${left <= 5 ? "text-blood" : "text-gold"}`}>{left}s</div>
-          )}
+          {timer > 0 && mode === "computer" && myTurn && <TimerRing left={left} total={timer} />}
           <div className="text-xs text-white/60">Guesses: {match.moves[0].length}</div>
         </div>
       </div>
@@ -255,6 +262,7 @@ export default function LocalGame({ mode, settings, nickname }: { mode: "compute
 
       <SpeechBubble line={line} />
       <MoveNotice notice={notice} onClose={closeNotice} />
+      <GuessBurst burst={burst} onDone={closeBurst} />
       <RedFlash k={flash} />
       <CodeInput length={length} submitLabel="Shoot! 🔫" onSubmit={onGuess} disabled={!myTurn} shakeKey={flash} onInvalid={(w) => w === "repeat" && speak("invalid")} />
       <DigitTracker value={tracker} onChange={updateTracker} />

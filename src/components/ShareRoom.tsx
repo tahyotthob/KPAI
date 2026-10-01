@@ -1,4 +1,5 @@
 "use client";
+import { m } from "framer-motion";
 import { useState } from "react";
 
 export default function ShareRoom({ code }: { code: string }) {
@@ -15,8 +16,19 @@ export default function ShareRoom({ code }: { code: string }) {
   };
   return (
     <div className="flex flex-col gap-3 items-center w-full">
+      <div className="relative flex items-center justify-center h-16 w-16 my-1" aria-hidden>
+        <span className="radar-ring absolute inset-0 rounded-full border-4 border-naija" />
+        <span className="radar-ring absolute inset-0 rounded-full border-4 border-naija" style={{ animationDelay: "0.9s" }} />
+        <span className="text-3xl relative">📡</span>
+      </div>
       <div className="text-xs uppercase tracking-widest text-white/50">Room code</div>
-      <div className="font-display text-6xl tracking-[.2em] text-gold" aria-label={`Room code ${code.split("").join(" ")}`}>{code}</div>
+      <div className="font-display text-6xl tracking-[.15em] text-gold flex" aria-label={`Room code ${code.split("").join(" ")}`}>
+        {code.split("").map((ch, i) => (
+          <m.span key={i} initial={{ y: -40, opacity: 0, rotate: -20 }} animate={{ y: 0, opacity: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 420, damping: 14, delay: i * 0.07 }}>
+            {ch}
+          </m.span>
+        ))}
+      </div>
       <a className="btn btn-green w-full" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer">
         💬 Share on WhatsApp
       </a>

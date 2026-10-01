@@ -13,6 +13,10 @@ import Confetti from "./Confetti";
 import DigitTracker, { emptyTracker, type TrackerState } from "./DigitTracker";
 import HistoryPanel from "./HistoryPanel";
 import KpaiStamp from "./KpaiStamp";
+import GuessBurst, { type Burst } from "./GuessBurst";
+import TimerRing from "./TimerRing";
+import AnimatedNumber from "./AnimatedNumber";
+import LoseBanner from "./LoseBanner";
 import RedFlash from "./RedFlash";
 import SecretEntry from "./SecretEntry";
 import ShareRoom from "./ShareRoom";
@@ -45,6 +49,8 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
   const [points, setPoints] = useState<number | null>(null);
   const spoke = useRef<string>("");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [burst, setBurst] = useState<Burst | null>(null);
+  const closeBurst = useCallback(() => setBurst(null), []);
   const seen = useRef<number | null>(null);
   const closeNotice = useCallback(() => setNotice(null), []);
 
@@ -199,9 +205,9 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
     const draw = !game.winner_id;
     const oppSlot = slot === 0 ? 1 : 0;
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
+      <div className={`flex flex-col items-center gap-4 text-center ${won ? "bigshake" : ""}`}>
         {won && <Confetti />}
-        {won || draw ? <KpaiStamp text={draw ? "DRAW!" : "KPAI!"} /> : <div className="font-display text-5xl text-gold">DEM DON KPAI YOU</div>}
+        {won || draw ? <KpaiStamp text={draw ? "DRAW!" : "KPAI!"} /> : <LoseBanner />}
         <SpeechBubble line={line} />
         <p className="text-white/80">
           {game.result === "forfeit" ? (won ? `${oppName} left the game. You win by walkover.` : "You left the game.")
@@ -211,7 +217,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
           <div><div className="text-xs text-white/50 uppercase">Your secret</div><div className="font-num text-3xl font-black text-gold">{reveal?.[slot] ?? "…"}</div></div>
           <div><div className="text-xs text-white/50 uppercase truncate">{oppName}</div><div className="font-num text-3xl font-black text-gold">{reveal?.[oppSlot] ?? "…"}</div></div>
         </div>
-        {points !== null && <div className="card p-3 w-full" role="status">You get <b className="text-gold">+{points} KPAI Points</b> 🏆</div>}
+        {points !== null && <div className="card p-3 w-full" role="status">You get <b className="text-gold text-xl"><AnimatedNumber prefix="+" value={points} /> KPAI Points</b> 🏆</div>}
         <div className="grid grid-cols-2 gap-3 w-full">
           {game.rematch_game_id ? (
             <button className="btn btn-gold" onClick={() => router.push(`/online/game/${game.rematch_game_id}`)}>Join rematch ▶</button>
@@ -243,6 +249,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
       if (myId) applyLocal({ player_id: myId, guess, dead: r.dead, wounded: r.wounded, move_number: r.moveNumber }, r.game ?? {});
       if (r.winner !== null) void refresh();
       if (r.dead !== len) {
+        setBurst({ id: Date.now(), dead: r.dead, wounded: r.wounded, close: r.dead === len - 1 && len >= 4 });
         if (r.dead === 0 && r.wounded === 0) { setFlash((f) => f + 1); speak("zero"); }
         else if (r.dead === len - 1 && len >= 4) speak("close");
         else if (r.dead === 0) speak("wounded");
@@ -259,7 +266,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="card p-3 flex items-center gap-3">
-        <Avatar emoji="🧑🏾" color={opponent?.online ? "#1faa59" : "#6b7280"} />
+        <Avatar emoji="🧑🏾" color={opponent?.online ? "#1faa59" : "#6b7280"} active={!myTurn && Boolean(opponent?.online)} />
         <div className="min-w-0">
           <div className="font-display truncate">{oppName} <TitleBadge title={opponent?.title} /></div>
           <div className="text-xs text-white/60">
@@ -268,7 +275,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
           </div>
         </div>
         <div className="ml-auto text-right">
-          {secondsLeft !== null && <div className={`font-num text-2xl font-black ${secondsLeft <= 5 ? "text-blood" : "text-gold"}`}>{secondsLeft}s</div>}
+          {secondsLeft !== null && <TimerRing left={secondsLeft} total={game.turn_seconds} />}
           <div className="text-xs text-white/60">Guesses: {moves[slot].length}</div>
         </div>
       </div>
@@ -285,6 +292,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
       {toast && <p className="text-center text-blood text-sm" role="alert">{toast}</p>}
       <RedFlash k={flash} />
       <MoveNotice notice={notice} onClose={closeNotice} />
+      <GuessBurst burst={burst} onDone={closeBurst} />
       <ChatBar messages={chat} onSend={sendChat} oppName={oppName} />
       <CodeInput length={len} submitLabel={myTurn ? "Shoot! 🔫" : "Wait for am…"} onSubmit={onGuess} disabled={!myTurn || busy} shakeKey={flash} onInvalid={(w) => w === "repeat" && speak("invalid")} />
       <DigitTracker value={tracker} onChange={updateTracker} />

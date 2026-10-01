@@ -1,5 +1,5 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useEffect, useState } from "react";
 import { CHAT_LINES } from "@/lib/chat";
 import type { ChatMsg } from "@/hooks/useOnlineGame";
@@ -13,7 +13,7 @@ export default function ChatBar({ messages, onSend, oppName }: { messages: ChatM
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const recent = messages.filter((m) => now - m.at < 9000).slice(-3);
+  const recent = messages.filter((x) => now - x.at < 9000).slice(-3);
 
   const send = (id: string) => {
     if (cool) return;
@@ -26,20 +26,20 @@ export default function ChatBar({ messages, onSend, oppName }: { messages: ChatM
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1.5 min-h-[2rem]" aria-live="polite">
         <AnimatePresence initial={false}>
-          {recent.map((m) => (
-            <motion.div
-              key={m.key}
-              initial={{ scale: 0.6, opacity: 0, x: m.from === "me" ? 30 : -30 }}
+          {recent.map((msg) => (
+            <m.div
+              key={msg.key}
+              initial={{ scale: 0.6, opacity: 0, x: msg.from === "me" ? 30 : -30 }}
               animate={{ scale: 1, opacity: 1, x: 0 }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 18 }}
               className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-sm font-bold border-2 border-black/50 ${
-                m.from === "me" ? "self-end bg-naija text-ink" : "self-start bg-gold text-ink"
+                msg.from === "me" ? "self-end bg-naija text-ink" : "self-start bg-gold text-ink"
               }`}
             >
-              {m.from === "them" && <span className="opacity-70 text-xs block">{oppName}</span>}
-              {m.text}
-            </motion.div>
+              {msg.from === "them" && <span className="opacity-70 text-xs block">{oppName}</span>}
+              {msg.text}
+            </m.div>
           ))}
         </AnimatePresence>
       </div>

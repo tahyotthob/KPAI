@@ -1,27 +1,43 @@
 "use client";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useMemo } from "react";
 
 const COLORS = ["#1faa59", "#f5b301", "#ffffff", "#ef4444", "#3b82f6"];
+const EMOJI = ["🎉", "💀", "🩸", "🇳🇬", "⭐"];
 
-export default function Confetti({ count = 70 }: { count?: number }) {
+/** Two cannons shoot confetti + emojis up, then it tumbles down. */
+export default function Confetti({ count = 64 }: { count?: number }) {
   const pieces = useMemo(
-    () => Array.from({ length: count }, (_, i) => ({
-      x: Math.random() * 100, delay: Math.random() * 0.6, dur: 2.2 + Math.random() * 1.8,
-      rot: Math.random() * 720 - 360, color: COLORS[i % COLORS.length], w: 6 + Math.random() * 8,
-    })),
+    () =>
+      Array.from({ length: count }, (_, i) => {
+        const left = i % 2 === 0;
+        const spread = Math.random() * 38;
+        return {
+          startX: left ? 4 : 96,
+          x: left ? 6 + spread + Math.random() * 30 : 94 - spread - Math.random() * 30,
+          peak: -(35 + Math.random() * 45),
+          delay: Math.random() * 0.35,
+          dur: 2.4 + Math.random() * 1.6,
+          rot: Math.random() * 900 - 450,
+          color: COLORS[i % COLORS.length],
+          w: 6 + Math.random() * 7,
+          emoji: i % 9 === 0 ? EMOJI[(i / 9) % EMOJI.length | 0] : null,
+        };
+      }),
     [count],
   );
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden z-40" aria-hidden>
       {pieces.map((p, i) => (
-        <motion.span
+        <m.span
           key={i}
-          initial={{ y: -30, opacity: 1, rotate: 0 }}
-          animate={{ y: "105vh", opacity: [1, 1, 0.8], rotate: p.rot }}
-          transition={{ duration: p.dur, delay: p.delay, ease: "easeIn" }}
-          style={{ position: "absolute", left: `${p.x}%`, width: p.w, height: p.w * 1.6, background: p.color, borderRadius: 2 }}
-        />
+          initial={{ left: `${p.startX}%`, top: "100%", opacity: 1, rotate: 0 }}
+          animate={{ left: `${p.x}%`, top: [`100%`, `${100 + p.peak}%`, "108%"], opacity: [1, 1, 0.9], rotate: p.rot }}
+          transition={{ duration: p.dur, delay: p.delay, times: [0, 0.35, 1], ease: ["easeOut", "easeIn"] }}
+          style={p.emoji ? { position: "absolute", fontSize: 22 } : { position: "absolute", width: p.w, height: p.w * 1.6, background: p.color, borderRadius: 2 }}
+        >
+          {p.emoji}
+        </m.span>
       ))}
     </div>
   );

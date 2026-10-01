@@ -1,5 +1,5 @@
 "use client";
-import { animate, motion } from "framer-motion";
+import { animate, m } from "framer-motion";
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import { scoreGuess } from "@/lib/game";
@@ -32,9 +32,9 @@ export default function HowToPlay() {
         <div className="text-sm text-white/60">Secret: <span className="font-num text-white">{SECRET}</span> · Guess: <span className="font-num text-white">{GUESS}</span></div>
         <div className="flex gap-2">
           {GUESS.split("").map((d, i) => (
-            <motion.div key={i} animate={{ scale: step >= 1 ? [1, 1.25, 1] : 1 }} transition={{ delay: i * 0.15 }} className={`font-num w-14 h-16 rounded-2xl border-4 flex items-center justify-center text-3xl font-black ${color(i)}`}>
+            <m.div key={i} animate={{ scale: step >= 1 ? [1, 1.25, 1] : 1 }} transition={{ delay: i * 0.15 }} className={`font-num w-14 h-16 rounded-2xl border-4 flex items-center justify-center text-3xl font-black ${color(i)}`}>
               {d}
-            </motion.div>
+            </m.div>
           ))}
         </div>
         <div className="text-sm text-white/70 h-16 text-center">
@@ -42,9 +42,9 @@ export default function HowToPlay() {
           {step >= 3 && <div><b className="text-gold">4</b> is in the code but elsewhere → 🩸 Wounded</div>}
         </div>
         {step >= 3 && (
-          <motion.div initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="font-display text-2xl">
+          <m.div initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="font-display text-2xl">
             {fb.dead} Dead {fb.wounded} Wounded 💀🩸
-          </motion.div>
+          </m.div>
         )}
       </div>
     </main>
