@@ -12,6 +12,20 @@ export interface EndInfo {
   level?: AiLevel;
 }
 
+/** Direct unlock (e.g. finishing the tutorial). Returns true if it was newly unlocked. */
+export function unlockBadge(id: string): boolean {
+  try {
+    const have = loadBadges();
+    if (have[id] || !BADGE_BY_ID[id]) return false;
+    saveBadges({ ...have, [id]: Date.now() });
+    const b = BADGE_BY_ID[id];
+    setTimeout(() => toast(`Badge unlocked: ${b.name}`, b.emoji, b.desc), 700);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const lagosHour = () => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", hour12: false }).format(new Date())) % 24;
 
 /**

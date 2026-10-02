@@ -8,6 +8,7 @@ import TitleBadge from "@/components/TitleBadge";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { nicknameMessage, usePlayer } from "@/hooks/usePlayer";
 import { AVATARS, loadAvatar, saveAvatar } from "@/lib/avatar";
+import { isTutorialDone } from "@/lib/tutorial";
 import { haptic, toast } from "@/lib/toast";
 
 const TAGLINES = [
@@ -23,8 +24,9 @@ const TILES = [
   { href: "/play/pass", title: "Pass & Play", sub: "One phone, two heads", icon: "🤝", cls: "bg-acid pat-dots" },
   { href: "/play/practice", title: "Practice", sub: "Solo, no pressure", icon: "🎯", cls: "bg-gold" },
   { href: "/leaderboard", title: "Leaderboard", sub: "Who dey top?", icon: "🏆", cls: "bg-ankara pat-ankara" },
-  { href: "/badges", title: "Badges", sub: "Collect all 12", icon: "🏅", cls: "bg-cream" },
-  { href: "/how-to-play", title: "How to Play", sub: "30-second lesson", icon: "❓", cls: "bg-panel2 !text-white" },
+  { href: "/badges", title: "Badges", sub: "Collect them all", icon: "🏅", cls: "bg-cream" },
+  { href: "/tutorial", title: "Mama Put's Class", sub: "Learn by playing", icon: "🍲", cls: "bg-panel2 !text-white" },
+  { href: "/how-to-play", title: "How to Play", sub: "Quick rules", icon: "❓", cls: "bg-panel2 !text-white col-span-2 !min-h-[5.5rem]" },
 ];
 
 const MARQUEE = "WETIN DEY 🔥 · KPAI! · NO BE SMALL THING · GUESS OR GET ROASTED · 💀 DEAD = RIGHT DIGIT, RIGHT PLACE · 🩸 WOUNDED = RIGHT DIGIT, WRONG PLACE · ";
@@ -37,9 +39,13 @@ export default function Home() {
   const [tag, setTag] = useState(0);
   const [avatar, setAvatar] = useState(AVATARS[0]);
   const [pick, setPick] = useState(false);
+  const [classDone, setClassDone] = useState(true);
   const taps = useRef(0);
 
-  useEffect(() => setAvatar(loadAvatar()), []);
+  useEffect(() => {
+    setAvatar(loadAvatar());
+    setClassDone(isTutorialDone());
+  }, []);
   useEffect(() => {
     const t = setInterval(() => setTag((x) => (x + 1) % TAGLINES.length), 3800);
     return () => clearInterval(t);
@@ -131,6 +137,13 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-2 gap-3.5">
+        {!classDone && (
+          <Link href="/tutorial" className="tile col-span-2 bg-cream pat-ankara enter-up tilt-l" style={{ ["--d" as string]: "0.45s" }}>
+            <span className="tile-emoji" aria-hidden>🍲</span>
+            <span className="tile-title">New? Mama Put go teach you</span>
+            <span className="tile-sub">2-minute interactive class · learn by playing</span>
+          </Link>
+        )}
         <DailyTile />
         {TILES.map((t, i) => (
           <Link key={t.href} href={t.href} className={`tile ${t.cls} enter-up ${i % 2 ? "tilt-r" : "tilt-l"}`} style={{ ["--d" as string]: `${0.6 + i * 0.06}s` }}>

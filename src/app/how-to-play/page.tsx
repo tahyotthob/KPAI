@@ -1,6 +1,7 @@
 "use client";
 import { m } from "framer-motion";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Header from "@/components/Header";
 import { scoreGuess } from "@/lib/game";
 
@@ -20,6 +21,11 @@ export default function HowToPlay() {
   return (
     <main className="mx-auto max-w-md px-4 pb-12">
       <Header title="How to Play" />
+      <Link href="/tutorial" className="tile bg-hot pat-dots mb-4 !min-h-[6rem] enter-up">
+        <span className="tile-emoji" aria-hidden>🍲</span>
+        <span className="tile-title">Still confused? Mama Put go teach you</span>
+        <span className="tile-sub">Interactive class · 2 minutes · you play as you learn</span>
+      </Link>
       <ol className="flex flex-col gap-3 text-white/85 leading-snug">
         <li className="card p-4">🔒 Each player picks a secret code of <b>4 different digits</b> (0–9, no repeats; a leading 0 is fine, e.g. <span className="font-num">0381</span>). You can also play with 3 or 5 digits.</li>
         <li className="card p-4">🔫 Take turns guessing the other person&apos;s code. Every guess must also have unique digits.</li>

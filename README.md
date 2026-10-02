@@ -59,8 +59,9 @@ The solver runs in a **Web Worker** so the UI never freezes, with a 600–1200 m
 - 🏅 Titles by all-time points: **Learner → Street Sharp → Area Champion → Oga → Kpai Master**
 - 💾 Anonymous by default (just a nickname); **"Save my rank"** links Google / email so points follow you to a new phone
 - 📅 **Daily Kpai** — one shared code per Lagos day (no backend needed), Wordle-style emoji grid you can brag with on WhatsApp, plus a daily streak
-- 🔥 **Win streaks, 🏅 12 collectible badges, 😎 avatars** — all stored on the device; toasts + haptics when you unlock things
+- 🔥 **Win streaks, 🏅 13 collectible badges, 😎 avatars** — all stored on the device; toasts + haptics when you unlock things
 - 🗣️ **AI trash talk** — Mama Put, Area Boy and Oga Kpai react to *your* play (three misses in a row, a near-crack, winning, losing…)
+- 🍲 **Mama Put's Class** — an interactive, play-as-you-learn tutorial that explains every clue digit by digit, with a note-pad lesson, a clue button and a graduation badge
 - 💬 **Preset banter chat** online (14 funny Pidgin lines, no free text → nothing to moderate) and a "what did they just play?" move notification
 - 🎨 **Gen-Z "Danfo Neon Sticker-Bomb" look** — danfo yellow, acid lime, hot pink, grain, sticker buttons, bento home, marquee tape
 - 📲 **PWA** (Add to Home Screen), WhatsApp-friendly **Open Graph** preview, light bundle for Android on mobile data

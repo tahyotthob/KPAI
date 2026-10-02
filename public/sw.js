@@ -3,9 +3,9 @@
    - Navigations: network first with a 3 s timeout (lie-fi friendly), then cache.
    - Static assets: cache first. API / Supabase calls are never cached.
    - Cache name is versioned; old caches are pruned on activate. */
-const VERSION = "v3";
+const VERSION = "v4";
 const CACHE = `kpai-${VERSION}`;
-const PAGES = ["/", "/play/practice", "/play/computer", "/play/pass", "/play/daily", "/how-to-play", "/badges"];
+const PAGES = ["/", "/play/practice", "/play/computer", "/play/pass", "/play/daily", "/how-to-play", "/tutorial", "/badges"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -19,6 +19,7 @@ export const BADGES: Badge[] = [
   { id: "friend_beater", emoji: "🌍", name: "Friend Beater", desc: "Win an online game" },
   { id: "na_tie", emoji: "🤝", name: "Na Tie", desc: "Draw a game" },
   { id: "daily_hustler", emoji: "📅", name: "Daily Hustler", desc: "Solve a Daily Kpai" },
+  { id: "mama_pikin", emoji: "🍲", name: "Mama's Pikin", desc: "Finish Mama Put's class" },
   { id: "consistent", emoji: "🗓️", name: "Consistent", desc: "Solve the Daily 3 days in a row" },
 ];
 
