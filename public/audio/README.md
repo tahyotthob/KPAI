@@ -62,3 +62,7 @@ Tip (ffmpeg): `ffmpeg -i raw.wav -ac 1 -b:a 64k -ar 24000 01-you-no-get-am.mp3`
 | `public/audio/hurry/01-hurry-up.mp3` | "Hurry up, time dey go!" |
 
 Each category picks a random clip and never plays the same clip twice in a row (add more files by adding a line to `src/lib/audio/lines.ts` and re-running the docs check `npm test`).
+
+## Switching the real voices on
+
+The game only looks for these files when the environment variable **`NEXT_PUBLIC_HAS_AUDIO=1`** is set (Vercel → Settings → Environment Variables, then redeploy). Until then it skips the lookup entirely and uses the speech bubble + browser voice, so players don't get 404 noise.

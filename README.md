@@ -58,6 +58,11 @@ The solver runs in a **Web Worker** so the UI never freezes, with a 600–1200 m
 - 🏆 **One universal leaderboard** across every mode — *All-time / This week / Today*, live via Supabase Realtime, your own row pinned at the bottom, Top 5 on the home screen
 - 🏅 Titles by all-time points: **Learner → Street Sharp → Area Champion → Oga → Kpai Master**
 - 💾 Anonymous by default (just a nickname); **"Save my rank"** links Google / email so points follow you to a new phone
+- 📅 **Daily Kpai** — one shared code per Lagos day (no backend needed), Wordle-style emoji grid you can brag with on WhatsApp, plus a daily streak
+- 🔥 **Win streaks, 🏅 12 collectible badges, 😎 avatars** — all stored on the device; toasts + haptics when you unlock things
+- 🗣️ **AI trash talk** — Mama Put, Area Boy and Oga Kpai react to *your* play (three misses in a row, a near-crack, winning, losing…)
+- 💬 **Preset banter chat** online (14 funny Pidgin lines, no free text → nothing to moderate) and a "what did they just play?" move notification
+- 🎨 **Gen-Z "Danfo Neon Sticker-Bomb" look** — danfo yellow, acid lime, hot pink, grain, sticker buttons, bento home, marquee tape
 - 📲 **PWA** (Add to Home Screen), WhatsApp-friendly **Open Graph** preview, light bundle for Android on mobile data
 
 ## KPAI Points
@@ -74,7 +79,7 @@ Awarded **only on the server** when a game finishes.
 | Practice solve | +8 (≤5 guesses) · +4 (6–7) · +1 |
 | ⚡ Speed bonus on any win | +5 if cracked in ≤5 guesses |
 
-**Anti-farming:** points against the same human opponent count for the first 5 wins per day; Easy-AI wins max 10/day; practice max 10/day (days roll over at midnight Lagos time). Games that finish in under 10 seconds are rejected.
+**Anti-farming** (days roll over at midnight Lagos time): the first 5 wins per day against the same human; per-day caps on every mode (practice 10, Easy 10, Medium/Hard 15, pass-and-play 8, 12 games per online opponent); offline modes together can earn at most 120 points a day and online counts at most 40 games a day. Games must last at least `max(10 s, 3 s × your guesses)`, online games need 2+ moves per player, and implausibly fast offline wins are rejected. Digit length scales win points (3 digits ×0.6, 5 digits ×1.4) and the speed-bonus threshold (≤4 / ≤5 / ≤7 guesses).
 
 ## Security model
 

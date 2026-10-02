@@ -2,7 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, ApiError, getSupabase } from "@/lib/supabase/client";
+import { api, ApiError, getSupabase, serverNow } from "@/lib/supabase/client";
+import { useGuardWhile } from "@/lib/leaveGuard";
+import { recordGameEnd } from "@/lib/progress";
+import { haptic } from "@/lib/toast";
 import { useOnlineGame } from "@/hooks/useOnlineGame";
 import { usePlayer } from "@/hooks/usePlayer";
 import { readLS, writeLS } from "@/hooks/useLocalStorage";
@@ -44,7 +47,9 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
   const [flash, setFlash] = useState(0);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
+  const [offline, setOffline] = useState(false);
+  const [skipRound, setSkipRound] = useState(0);
   const [reveal, setReveal] = useState<[string | null, string | null] | null>(null);
   const [points, setPoints] = useState<number | null>(null);
   const spoke = useRef<string>("");
@@ -94,8 +99,17 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
 
   useEffect(() => setTracker(readLS(`kpai:tracker:${gameId}`, emptyTracker())), [gameId]);
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const t = setInterval(() => setNow(serverNow()), 1000);
+    const up = () => setOffline(false);
+    const down = () => setOffline(true);
+    setOffline(typeof navigator !== "undefined" && navigator.onLine === false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+    };
   }, []);
 
   const status = game?.status;
@@ -106,16 +120,22 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
     game && status === "playing" && game.turn_seconds && game.turn_started_at
       ? Math.max(0, Math.ceil(game.turn_seconds - (now - new Date(game.turn_started_at).getTime()) / 1000))
       : null;
-  const skipTries = useRef(0);
+  // The server allows a 3 s grace after the timer; ask it to skip the turn just after that, retry a few times.
   useEffect(() => {
-    if (secondsLeft !== 0) return void (skipTries.current = 0);
-    if (skipTries.current > 6) return;
+    if (secondsLeft !== 0) {
+      setSkipRound(0);
+      return;
+    }
+    if (skipRound > 5) return;
     const t = setTimeout(() => {
-      skipTries.current++;
-      api(`/api/games/${gameId}/skip`, {}).then(() => refresh()).catch(() => {});
-    }, 500 + skipTries.current * 1200);
+      api(`/api/games/${gameId}/skip`, {})
+        .then(() => refresh())
+        .catch(() => {})
+        .finally(() => setSkipRound((r) => r + 1));
+    }, skipRound === 0 ? 3300 : 1500);
     return () => clearTimeout(t);
-  }, [secondsLeft, gameId, refresh, now]);
+  }, [secondsLeft, skipRound, gameId, refresh]);
+  useGuardWhile(status === "playing");
   const hurried = useRef(false);
   useEffect(() => {
     if (myTurn && secondsLeft !== null && secondsLeft <= 5 && secondsLeft > 0 && !hurried.current) {
@@ -132,6 +152,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
     if (spoke.current !== gameId) {
       spoke.current = gameId;
       speak(outcome === "lose" ? "lose" : "win");
+      recordGameEnd({ mode: "online", outcome, guesses: moves[slot ?? 0].length, length: game!.digit_length });
     }
     api<{ secrets: [string | null, string | null] }>(`/api/games/${gameId}/reveal`).then((r) => setReveal(r.secrets)).catch(() => {});
     getSupabase()
@@ -156,6 +177,13 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
     [refresh],
   );
 
+  if (error === "network" && !game)
+    return (
+      <div className="card p-5 text-center flex flex-col gap-3">
+        <p>Network wahala. We no fit reach the room.</p>
+        <button className="btn btn-gold" onClick={() => void refresh()}>Try again</button>
+      </div>
+    );
   if (error === "not_found") return <p className="card p-5 text-center">This room no dey exist (or you no dey inside).</p>;
   if (!game || slot === null) return <p className="text-center text-white/60 py-10">Loading room…</p>;
   const len = game.digit_length;
@@ -250,6 +278,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
       if (r.winner !== null) void refresh();
       if (r.dead !== len) {
         setBurst({ id: Date.now(), dead: r.dead, wounded: r.wounded, close: r.dead === len - 1 && len >= 4 });
+        haptic(r.dead === 0 && r.wounded === 0 ? [70, 40, 70] : 20);
         if (r.dead === 0 && r.wounded === 0) { setFlash((f) => f + 1); speak("zero"); }
         else if (r.dead === len - 1 && len >= 4) speak("close");
         else if (r.dead === 0) speak("wounded");
@@ -280,6 +309,7 @@ export default function OnlineGame({ gameId }: { gameId: string }) {
         </div>
       </div>
 
+      {offline && <div className="rounded-xl bg-blood text-white font-bold text-center p-2" role="alert">You dey offline — we go reconnect when network return.</div>}
       {game.final_turn && <div className="rounded-xl bg-gold text-ink font-bold text-center p-2">Fairness rule: {game.current_turn === slot ? "your" : `${oppName}'s`} last turn!</div>}
       <Claim game={game} slot={slot} now={now} onClaim={async () => { await call(`/api/games/${gameId}/claim`); void refresh(); }} />
 

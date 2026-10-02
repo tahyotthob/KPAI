@@ -17,6 +17,10 @@ export function getSupabase(): SupabaseClient | null {
   return client;
 }
 
+let serverOffsetMs = 0;
+/** Server-corrected "now" - phones with a wrong clock would otherwise show the wrong turn timer. */
+export const serverNow = () => Date.now() + serverOffsetMs;
+
 let sessionPromise: Promise<Session | null> | null = null;
 
 /** Returns a signed-in session, creating an anonymous one on first visit (only ever one in flight). */
@@ -44,6 +48,11 @@ export async function api<T = unknown>(path: string, body?: unknown, method = bo
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  const dateHdr = res.headers.get("date");
+  if (dateHdr) {
+    const t = new Date(dateHdr).getTime();
+    if (Number.isFinite(t)) serverOffsetMs = t - Date.now();
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, json.error ?? "error", json);
   return json as T;

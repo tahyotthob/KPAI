@@ -3,10 +3,10 @@ import { AnimatePresence, m } from "framer-motion";
 import type { Move } from "@/lib/game";
 
 export function FeedbackIcons({ dead, wounded }: { dead: number; wounded: number }) {
-  if (!dead && !wounded) return <span className="text-white/50 text-sm">nothing 🙅</span>;
+  if (!dead && !wounded) return <span className="text-white/60 text-sm">nothing 🙅</span>;
   const icons = [...Array(dead).fill("💀"), ...Array(wounded).fill("🩸")] as string[];
   return (
-    <span className="tracking-tight inline-flex">
+    <span className="tracking-tight inline-flex" aria-hidden>
       {icons.map((ic, i) => (
         <m.span
           key={i}
@@ -28,8 +28,8 @@ export default function HistoryPanel({ moves, title, hideGuess }: { moves: Move[
   return (
     <div className="card p-3">
       {title && <div className="text-xs uppercase tracking-widest text-white/50 mb-2">{title}</div>}
-      {moves.length === 0 && <div className="text-white/40 text-sm py-4 text-center">No guesses yet. Oya start!</div>}
-      <ol className="max-h-72 overflow-y-auto flex flex-col gap-2 pr-1" aria-live="polite">
+      {moves.length === 0 && <div className="text-white/60 text-sm py-3 text-center">No guesses yet. Oya start!</div>}
+      <ol className="max-h-40 [@media(min-height:760px)]:max-h-64 overflow-y-auto flex flex-col gap-2 pr-1" aria-live="polite">
         <AnimatePresence initial={false}>
           {moves
             .map((mv, i) => ({ mv, n: i + 1 }))
@@ -42,7 +42,7 @@ export default function HistoryPanel({ moves, title, hideGuess }: { moves: Move[
                 transition={{ type: "spring", stiffness: 500, damping: 18 }}
                 className="flex items-center gap-3 rounded-xl bg-ink px-3 py-2"
               >
-                <span className="text-white/40 w-6 text-sm font-num">#{n}</span>
+                <span className="text-white/60 w-6 text-sm font-num">#{n}</span>
                 <span className="font-num text-2xl font-black tracking-widest text-gold">
                   {hideGuess ? "••••" : mv.guess}
                 </span>

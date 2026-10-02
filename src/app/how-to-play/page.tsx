@@ -1,5 +1,5 @@
 "use client";
-import { animate, m } from "framer-motion";
+import { m } from "framer-motion";
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import { scoreGuess } from "@/lib/game";
@@ -10,8 +10,8 @@ const GUESS = "1234";
 export default function HowToPlay() {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const c = animate(0, 4, { duration: 8, ease: "linear", repeat: Infinity, repeatDelay: 1.5, onUpdate: (v) => setStep(Math.floor(v)) });
-    return () => c.stop();
+    const t = setInterval(() => setStep((s) => (s + 1) % 5), 1900);
+    return () => clearInterval(t);
   }, []);
   const fb = scoreGuess(SECRET, GUESS);
   const color = (i: number) =>

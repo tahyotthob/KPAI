@@ -111,7 +111,8 @@ export function useOnlineGame(gameId: string, myId: string | undefined) {
       })
       .on("presence", { event: "sync" }, () => setPresence(new Set(Object.keys(ch.presenceState()))))
       .on("broadcast", { event: "chat" }, ({ payload }) => {
-        const line = CHAT_BY_ID[String(payload?.id)];
+        const cid = String(payload?.id);
+        const line = Object.hasOwn(CHAT_BY_ID, cid) ? CHAT_BY_ID[cid] : undefined;
         const now = Date.now();
         if (!line || now - lastChatIn.current < 600) return; // presets only, light rate limit
         lastChatIn.current = now;
@@ -121,7 +122,9 @@ export function useOnlineGame(gameId: string, myId: string | undefined) {
         if (status === "SUBSCRIBED") void ch.track({ at: Date.now() });
       });
     channel.current = ch;
-    const poll = setInterval(() => void load(), 8000);
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 8000);
     const onVis = () => document.visibilityState === "visible" && void load();
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("online", onVis);
@@ -141,11 +144,21 @@ export function useOnlineGame(gameId: string, myId: string | undefined) {
     const beat = () => void api(`/api/games/${gameId}/heartbeat`, {}).catch(() => {});
     beat();
     const t = setInterval(beat, 30000);
-    return () => clearInterval(t);
+    // phones freeze timers when the screen locks: ping the moment we wake up
+    const wake = () => document.visibilityState === "visible" && beat();
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("focus", beat);
+    window.addEventListener("online", beat);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", wake);
+      window.removeEventListener("focus", beat);
+      window.removeEventListener("online", beat);
+    };
   }, [gameId, status]);
 
   const sendChat = useCallback((id: string) => {
-    const line = CHAT_BY_ID[id];
+    const line = Object.hasOwn(CHAT_BY_ID, id) ? CHAT_BY_ID[id] : undefined;
     if (!line || !channel.current) return;
     void channel.current.send({ type: "broadcast", event: "chat", payload: { id } });
     const now = Date.now();

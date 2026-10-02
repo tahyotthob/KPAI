@@ -56,7 +56,11 @@ export function pickLine(category: LineCategory): Line {
   return lines[i];
 }
 
+/** Set NEXT_PUBLIC_HAS_AUDIO=1 once the mp3 files are in /public/audio. Until then we skip the probing (no 404 noise). */
+const HAS_AUDIO = process.env.NEXT_PUBLIC_HAS_AUDIO === "1";
+
 function exists(url: string): Promise<boolean> {
+  if (!HAS_AUDIO) return Promise.resolve(false);
   let p = fileOk.get(url);
   if (!p) {
     p = fetch(url, { method: "HEAD" })

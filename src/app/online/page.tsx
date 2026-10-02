@@ -24,6 +24,7 @@ export default function OnlineMenu() {
         {tab === "create" ? (
           <GameSetup
             mode="online"
+            initial={{ timer: 60 }}
             onStart={async (s) => {
               if (busy) return;
               setBusy(true);

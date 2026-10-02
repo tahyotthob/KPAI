@@ -9,7 +9,17 @@ export const POST = handle(async (req: Request) => {
   if (![3, 4, 5].includes(Number(b.length))) throw new HttpError(400, "bad_length");
   if (b.mode === "computer" && !["easy", "medium", "hard"].includes(String(b.aiLevel))) throw new HttpError(400, "bad_level");
 
-  const { data, error } = await getAdmin()
+  const admin = getAdmin();
+  const { count: open } = await admin
+    .from("games")
+    .select("id", { count: "exact", head: true })
+    .eq("player1_id", player.id)
+    .neq("mode", "online")
+    .neq("status", "finished")
+    .gte("created_at", new Date(Date.now() - 3600_000).toISOString());
+  if ((open ?? 0) >= 5) throw new HttpError(429, "too_many_open_games");
+
+  const { data, error } = await admin
     .from("games")
     .insert({
       mode: b.mode,

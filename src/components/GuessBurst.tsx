@@ -38,7 +38,7 @@ export default function GuessBurst({ burst, onDone }: { burst: Burst | null; onD
             aria-hidden
           >
             <m.div
-              className="rounded-3xl bg-black/65 backdrop-blur-sm px-8 py-5 text-center border-4 border-white/10"
+              className="rounded-3xl bg-black/80 px-8 py-5 text-center border-4 border-white/10"
               initial={{ scale: 0.4, rotate: -6 }}
               animate={nothing ? { scale: 1, rotate: [0, -8, 8, -6, 6, 0] } : { scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 380, damping: 15 }}

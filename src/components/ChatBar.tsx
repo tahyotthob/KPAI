@@ -9,10 +9,14 @@ export default function ChatBar({ messages, onSend, oppName }: { messages: ChatM
   const [open, setOpen] = useState(false);
   const [cool, setCool] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const hasRecent = messages.some((x) => now - x.at < 9000);
   useEffect(() => {
+    if (!messages.length) return;
+    setNow(Date.now());
+    if (!hasRecent && messages.length) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [messages, hasRecent]);
   const recent = messages.filter((x) => now - x.at < 9000).slice(-3);
 
   const send = (id: string) => {
@@ -49,7 +53,7 @@ export default function ChatBar({ messages, onSend, oppName }: { messages: ChatM
       {open && (
         <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto">
           {CHAT_LINES.map((l) => (
-            <button key={l.id} className="btn btn-dark !py-1.5 !px-3 text-sm !rounded-full" onClick={() => send(l.id)} disabled={cool}>
+            <button key={l.id} className="btn btn-dark !py-2 !px-3 text-sm !rounded-full" onClick={() => send(l.id)} disabled={cool}>
               {l.text}
             </button>
           ))}

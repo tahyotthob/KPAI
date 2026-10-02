@@ -13,6 +13,8 @@ import { POST as secret } from "./[id]/secret/route";
 import { POST as guess } from "./[id]/guess/route";
 import { GET as reveal } from "./[id]/reveal/route";
 import { POST as claim } from "./[id]/claim/route";
+import { POST as local } from "./local/route";
+import { POST as finish } from "./[id]/finish/route";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const B = "bbbbbbbb-0000-4000-8000-000000000002";
@@ -73,10 +75,12 @@ describe("online game routes", () => {
 
   it("fairness rule: P1 cracks, P2 also cracks -> draw, both get +5", async () => {
     const id = await setupGame();
+    await guess(req(A, { guess: "0123" }), ctx(id));
+    await guess(req(B, { guess: "0123" }), ctx(id));
     expect((await json(await guess(req(A, { guess: "5678" }), ctx(id)))).body).toMatchObject({ dead: 4, winner: null });
     const last = await json(await guess(req(B, { guess: "1234" }), ctx(id)));
     expect(last.body.winner).toBe("draw");
-    expect(fake.rpcCalls.map((c) => [c.args.p_outcome, c.args.p_points])).toEqual([["draw", 5], ["draw", 5]]);
+    expect(fake.rpcCalls.filter((c) => c.name === "record_score").map((c) => [c.args.p_outcome, c.args.p_points])).toEqual([["draw", 5], ["draw", 5]]);
     expect(fake.tables.games[0].status).toBe("finished");
     // reveal now works, and only for players in the game
     const rv = await json(await reveal(req(A, undefined, "GET"), ctx(id)));
@@ -87,10 +91,12 @@ describe("online game routes", () => {
 
   it("P1 cracks, P2 misses on the final turn -> P1 wins with speed bonus (35)", async () => {
     const id = await setupGame();
+    await guess(req(A, { guess: "0123" }), ctx(id));
+    await guess(req(B, { guess: "0123" }), ctx(id));
     await guess(req(A, { guess: "5678" }), ctx(id));
     const last = await json(await guess(req(B, { guess: "0123" }), ctx(id)));
     expect(last.body.winner).toBe(0);
-    const calls = fake.rpcCalls.map((c) => [c.args.p_player, c.args.p_outcome, c.args.p_points]);
+    const calls = fake.rpcCalls.filter((c) => c.name === "record_score").map((c) => [c.args.p_player, c.args.p_outcome, c.args.p_points]);
     expect(calls).toEqual([[A, "win", 35], [B, "lose", 1]]);
   });
 
@@ -102,11 +108,12 @@ describe("online game routes", () => {
 
   it("disconnect claim needs 2 minutes of silence, and forfeit wins get no speed bonus", async () => {
     const id = await setupGame();
+    for (const [u, g] of [[A, "0123"], [B, "0123"], [A, "0124"], [B, "0124"]] as const) await guess(req(u, { guess: g }), ctx(id));
     const early = await json(await claim(req(A, {}), ctx(id)));
     expect(early.body.error).toBe("opponent_still_here");
     fake.tables.games[0].last_seen_p2 = new Date(Date.now() - 150_000).toISOString();
     expect((await json(await claim(req(A, {}), ctx(id)))).body.claimed).toBe(true);
-    const calls = fake.rpcCalls.map((c) => [c.args.p_player, c.args.p_outcome, c.args.p_points, c.args.p_guesses]);
+    const calls = fake.rpcCalls.filter((c) => c.name === "record_score").map((c) => [c.args.p_player, c.args.p_outcome, c.args.p_points, c.args.p_guesses]);
     expect(calls).toEqual([[A, "win", 30, null], [B, "lose", 1, null]]);
   });
 
@@ -117,5 +124,65 @@ describe("online game routes", () => {
     expect((await json(await secret(req(A, { secret: "123" }), ctx(c.body.id)))).status).toBe(200);
     expect((await json(await secret(req(A, { secret: "456" }), ctx(c.body.id)))).body.error).toBe("secret_already_locked");
     expect((await json(await secret(req(B, { secret: "1123" }), ctx(c.body.id)))).status).toBe(400);
+  });
+
+  it("5 parallel guesses for the same turn: exactly one succeeds", async () => {
+    const id = await setupGame();
+    const rs = await Promise.all(Array.from({ length: 5 }, (_, i) => guess(req(A, { guess: ["0123", "0124", "0125", "0126", "0127"][i] }), ctx(id))));
+    const statuses = rs.map((r) => r.status).sort();
+    expect(statuses).toEqual([200, 409, 409, 409, 409]);
+    const errs = await Promise.all(rs.filter((r) => r.status === 409).map(async (r) => (await r.json()).error));
+    expect(errs.every((e) => e === "not_your_turn")).toBe(true);
+    expect(fake.tables.moves).toHaveLength(1);
+    expect(fake.tables.games[0].current_turn).toBe(1);
+  });
+
+  it("forfeit/claim before each player has made 2 moves pays nothing, but finishes the game", async () => {
+    const id = await setupGame();
+    await guess(req(A, { guess: "0123" }), ctx(id));
+    fake.tables.games[0].last_seen_p2 = new Date(Date.now() - 150_000).toISOString();
+    expect((await json(await claim(req(A, {}), ctx(id)))).body.claimed).toBe(true);
+    expect(fake.tables.games[0].status).toBe("finished");
+    expect(fake.rpcCalls.filter((c) => c.name === "record_score")).toHaveLength(0);
+  });
+
+  it("limits open rooms to 3 per player", async () => {
+    for (let i = 0; i < 3; i++) expect((await json(await create(req(A, {})))).status).toBe(200);
+    const r = await json(await create(req(A, {})));
+    expect(r).toMatchObject({ status: 429, body: { error: "too_many_rooms" } });
+    expect((await json(await create(req(B, {})))).status).toBe(200);
+  });
+
+  it("limits open local games to 5 per hour", async () => {
+    for (let i = 0; i < 5; i++) expect((await json(await local(req(A, { mode: "practice", length: 4 })))).status).toBe(200);
+    const r = await json(await local(req(A, { mode: "practice", length: 4 })));
+    expect(r).toMatchObject({ status: 429, body: { error: "too_many_open_games" } });
+  });
+
+  it("finish rejects implausibly fast / lucky offline games but still closes them", async () => {
+    const mk = async (ageSec: number) => {
+      const id = (await json(await local(req(A, { mode: "practice", length: 4 })))).body.id as string;
+      fake.tables.games.find((x) => x.id === id)!.started_at = new Date(Date.now() - ageSec * 1000).toISOString();
+      return id;
+    };
+    const events = [{ p: 0, g: "1234" }];
+    // 1-guess win on 4 digits: implausible
+    const id1 = await mk(60);
+    const r1 = await json(await finish(req(A, { secrets: ["1234"], events }), ctx(id1)));
+    expect(r1.body).toMatchObject({ points: 0, rejected: "implausible" });
+    expect(fake.tables.games.find((x) => x.id === id1)!.status).toBe("finished");
+    expect(fake.rpcCalls).toHaveLength(0);
+    // older than 6h
+    const id2 = await mk(7 * 3600);
+    const events3 = [{ p: 0, g: "0123" }, { p: 0, g: "0124" }, { p: 0, g: "1234" }];
+    expect((await json(await finish(req(A, { secrets: ["1234"], events: events3 }), ctx(id2)))).body.rejected).toBe("too_old");
+    // 3 guesses need >= 10s (max(10, 9))
+    const id3 = await mk(5);
+    expect((await json(await finish(req(A, { secrets: ["1234"], events: events3 }), ctx(id3)))).body.rejected).toBe("too_fast");
+    // plausible: scores, with length passed through
+    const id4 = await mk(60);
+    const ok = await json(await finish(req(A, { secrets: ["1234"], events: events3 }), ctx(id4)));
+    expect(ok.status).toBe(200);
+    expect(fake.rpcCalls.at(-1)?.args).toMatchObject({ p_mode: "practice", p_outcome: "win", p_points: 8 });
   });
 });

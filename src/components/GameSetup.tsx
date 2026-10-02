@@ -16,7 +16,7 @@ function Seg<T extends string | number>({ options, value, onChange, label }: { o
       <div className="text-xs uppercase tracking-widest text-white/50 mb-2">{label}</div>
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
         {options.map((o) => (
-          <button key={String(o.v)} onClick={() => onChange(o.v)} className={`btn ${value === o.v ? "btn-gold" : "btn-dark"}`}>
+          <button key={String(o.v)} aria-pressed={value === o.v} onClick={() => onChange(o.v)} className={`btn ${value === o.v ? "btn-gold" : "btn-dark"}`}>
             {o.label}
           </button>
         ))}

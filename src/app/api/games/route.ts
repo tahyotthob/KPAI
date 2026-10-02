@@ -12,6 +12,14 @@ export const POST = handle(async (req: Request) => {
   if (![0, 30, 60].includes(timer)) throw new HttpError(400, "bad_timer");
 
   const admin = getAdmin();
+  const { count: open } = await admin
+    .from("games")
+    .select("id", { count: "exact", head: true })
+    .eq("mode", "online")
+    .eq("player1_id", player.id)
+    .in("status", ["waiting", "setting_secrets"]);
+  if ((open ?? 0) >= 3) throw new HttpError(429, "too_many_rooms");
+
   for (let i = 0; i < 5; i++) {
     const room_code = makeRoomCode();
     const { data, error } = await admin

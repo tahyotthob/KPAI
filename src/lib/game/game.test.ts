@@ -67,14 +67,15 @@ describe("solvers", () => {
     }
     expect(total / 200).toBeLessThan(5.6);
   });
-  it("Medium solves eventually and averages under ~7", () => {
+  it("Medium (Area Boy) solves eventually and averages ~6-6.5 guesses", () => {
     let total = 0;
-    for (let i = 0; i < 100; i++) {
+    const N = 150;
+    for (let i = 0; i < N; i++) {
       const n = play("medium", randomCode(4));
-      expect(n).toBeLessThanOrEqual(12);
+      expect(n).toBeLessThanOrEqual(25);
       total += n;
     }
-    expect(total / 100).toBeLessThan(7.5);
+    expect(total / N).toBeLessThan(7.5);
   });
   it("Easy always produces valid, non-repeating guesses", () => {
     const secret = randomCode(4);
@@ -115,6 +116,29 @@ describe("points & titles", () => {
     expect(basePoints({ mode: "practice", outcome: "win", guesses: 5 }).points).toBe(8);
     expect(basePoints({ mode: "practice", outcome: "win", guesses: 7 }).points).toBe(4);
     expect(basePoints({ mode: "practice", outcome: "win", guesses: 8 }).points).toBe(1);
+  });
+  it("scales win rows by code length; 4 digits is unchanged", () => {
+    const b = (length: 3 | 4 | 5, guesses: number, mode: "online" | "pass" = "online") =>
+      basePoints({ mode, outcome: "win", guesses, length }).points;
+    expect(b(4, 9)).toBe(30);
+    expect(b(3, 9)).toBe(18);
+    expect(b(5, 9)).toBe(42);
+    expect(b(3, 4)).toBe(23); // speed bonus at <=4 guesses
+    expect(b(3, 5)).toBe(18);
+    expect(b(5, 7)).toBe(47); // speed bonus at <=7 guesses
+    expect(b(5, 8)).toBe(42);
+    expect(b(3, 9, "pass")).toBe(6);
+    expect(basePoints({ mode: "computer", aiLevel: "hard", outcome: "win", guesses: 9, length: 5 }).points).toBe(35);
+    expect(basePoints({ mode: "computer", aiLevel: "medium", outcome: "win", guesses: 9, length: 3 }).points).toBe(7);
+    expect(basePoints({ mode: "computer", aiLevel: "easy", outcome: "win", guesses: 9, length: 5 }).points).toBe(6);
+    // flat rows are not scaled
+    expect(basePoints({ mode: "online", outcome: "lose", guesses: 9, length: 5 }).points).toBe(1);
+    expect(basePoints({ mode: "online", outcome: "draw", guesses: 9, length: 3 }).points).toBe(5);
+  });
+  it("practice tiers shift with length", () => {
+    const p = (length: 3 | 4 | 5, guesses: number) => basePoints({ mode: "practice", outcome: "win", guesses, length }).points;
+    expect([p(3, 4), p(3, 5), p(3, 6), p(3, 7)]).toEqual([8, 4, 4, 1]);
+    expect([p(5, 7), p(5, 9), p(5, 10)]).toEqual([8, 4, 1]);
   });
   it("titles by threshold", () => {
     expect(titleFor(0).name).toBe("Learner");

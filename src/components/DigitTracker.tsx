@@ -14,7 +14,7 @@ export default function DigitTracker({ value, onChange }: { value: TrackerState;
   return (
     <div className="card p-3">
       <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Note pad · tap to cycle</div>
-      <div className="grid grid-cols-10 gap-1">
+      <div className="grid grid-cols-5 gap-1.5">
         {value.map((s, d) => (
           <m.button
             key={`${d}-${s}`}
@@ -24,7 +24,7 @@ export default function DigitTracker({ value, onChange }: { value: TrackerState;
             whileTap={{ scale: 0.88 }}
             onClick={() => cycle(d)}
             aria-label={`Digit ${d}: ${["unknown", "ruled out", "confirmed"][s]}`}
-            className={`font-num rounded-lg py-2 text-lg font-black border-2 transition ${
+            className={`font-num rounded-xl min-h-11 text-xl font-black border-2 transition ${
               s === 0
                 ? "bg-ink border-white/15 text-white"
                 : s === 1

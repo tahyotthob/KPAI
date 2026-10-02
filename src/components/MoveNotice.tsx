@@ -18,7 +18,7 @@ export interface Notice {
 }
 
 /** Slide-in card: what the opponent just played, its result, and how the round compares. */
-export default function MoveNotice({ notice, onClose, ms = 6500 }: { notice: Notice | null; onClose: () => void; ms?: number }) {
+export default function MoveNotice({ notice, onClose, ms = 4200 }: { notice: Notice | null; onClose: () => void; ms?: number }) {
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(onClose, ms);
@@ -26,7 +26,7 @@ export default function MoveNotice({ notice, onClose, ms = 6500 }: { notice: Not
   }, [notice, onClose, ms]);
 
   return (
-    <div className="fixed inset-x-0 top-16 z-50 px-4 pointer-events-none flex justify-center" role="status" aria-live="polite">
+    <div className="fixed inset-x-0 top-14 z-50 px-3 pointer-events-none flex justify-center" role="status" aria-live="polite">
       <AnimatePresence>
         {notice && (
           <m.button
@@ -37,7 +37,7 @@ export default function MoveNotice({ notice, onClose, ms = 6500 }: { notice: Not
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -40, opacity: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 22 }}
-            className="pointer-events-auto w-full max-w-md text-left card !bg-panel2 border-gold/60 !border-4 p-3 shadow-[0_6px_0_rgba(0,0,0,.5)]"
+            className="pointer-events-none w-full max-w-md text-left card !bg-panel2 !border-gold p-2.5"
           >
             <div className="flex items-center gap-3">
               <div className="text-3xl" aria-hidden>🎯</div>

@@ -34,11 +34,13 @@ interface ScoreArgs {
   guesses: number | null;
   opponentId: string | null;
   aiLevel: AiLevel | null;
+  /** code length of the game (3-5); defaults to 4 */
+  length?: number;
 }
 
 /** Awards KPAI Points via the record_score SQL function (service role only). */
 export async function awardPoints(a: ScoreArgs): Promise<number> {
-  const { points, reason } = basePoints({ mode: a.mode, outcome: a.outcome, aiLevel: a.aiLevel, guesses: a.guesses ?? 99 });
+  const { points, reason } = basePoints({ mode: a.mode, outcome: a.outcome, aiLevel: a.aiLevel, guesses: a.guesses ?? 99, length: a.length });
   const { data, error } = await getAdmin().rpc("record_score", {
     p_player: a.playerId,
     p_game: a.gameId,
@@ -75,8 +77,9 @@ export async function settleOnline(
   if (!updated?.length) return { points: [0, 0] as [number, number] };
 
   // Too-fast games (< 10s) don't count, to stop point farming with two accounts.
+  // Games where either player made fewer than 2 moves (setup-stage forfeits, instant resigns) pay nothing.
   const started = game.started_at ?? game.created_at;
-  if (secondsSince(started) < MIN_GAME_SECONDS || !game.player2_id) return { points: [0, 0] as [number, number] };
+  if (secondsSince(started) < MIN_GAME_SECONDS || !game.player2_id || guesses[0] < 2 || guesses[1] < 2) return { points: [0, 0] as [number, number] };
 
   const ids = [game.player1_id, game.player2_id] as const;
   const points: [number, number] = [0, 0];
@@ -90,6 +93,7 @@ export async function settleOnline(
       guesses: how === "forfeit" ? null : guesses[slot],
       opponentId: ids[slot === 0 ? 1 : 0],
       aiLevel: null,
+      length: game.digit_length,
     });
   }
   return { points };

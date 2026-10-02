@@ -1,5 +1,6 @@
 "use client";
 import { LazyMotion, MotionConfig } from "framer-motion";
+import ToastHost from "./ToastHost";
 
 const loadFeatures = () => import("./motionFeatures").then((mod) => mod.default);
 
@@ -7,7 +8,9 @@ const loadFeatures = () => import("./motionFeatures").then((mod) => mod.default)
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <LazyMotion features={loadFeatures}>
-      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+      <MotionConfig reducedMotion="user">{children}
+        <ToastHost />
+      </MotionConfig>
     </LazyMotion>
   );
 }

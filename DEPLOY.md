@@ -18,7 +18,7 @@ The folder `supabase/migrations/` holds the SQL that creates all tables, securit
 
 1. In Supabase open **SQL Editor** (left sidebar) → **New query**.
 2. Open `supabase/migrations/0001_schema.sql` from this repo, copy everything, paste it into the editor, press **Run**. You should see "Success".
-3. Repeat for `0002_rls.sql`, then `0003_functions.sql`, then `0005_ready_flags.sql` (skip any file that doesn't exist; `0004` is already folded into `0003`).
+3. Repeat for `0002_rls.sql`, then `0003_functions.sql`, then `0005_ready_flags.sql`, then `0006_hardening.sql` (there is no `0004` file; its change is folded into `0003`).
 
 (Comfortable with a terminal? `npx supabase link --project-ref <ref>` then `npx supabase db push` does the same.)
 
@@ -86,6 +86,10 @@ This makes the "Save my rank" magic links and Google sign-in come back to your s
 - [ ] **Play Friend → Create room**: you get a 6-character code. Open the link on a second phone/incognito window, pick another nickname, and play a game.
 - [ ] **Share on WhatsApp** opens WhatsApp with the invite; the link preview shows the KPAI! card.
 - [ ] Phone browser menu → **Add to Home Screen** installs KPAI!.
+
+## Optional: turn on the real voices
+
+After you add the recorded MP3s (see `public/audio/README.md`), set `NEXT_PUBLIC_HAS_AUDIO=1` in Vercel and redeploy. Without it the game uses speech bubbles + the browser voice.
 
 ## Daily cleanup
 

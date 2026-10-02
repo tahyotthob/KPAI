@@ -37,6 +37,7 @@ export function makeFakeAdmin() {
     eq(k: string, v: any) { this.filters.push((r) => r[k] === v); return this; }
     neq(k: string, v: any) { this.filters.push((r) => r[k] !== v); return this; }
     is(k: string, v: any) { this.filters.push((r) => (r[k] ?? null) === v); return this; }
+    gte(k: string, v: any) { this.filters.push((r) => r[k] >= v); return this; }
     in(k: string, v: any[]) { this.filters.push((r) => v.includes(r[k])); return this; }
     order(k: string) { this.ord = k; return this; }
     single() { return this.run("single"); }
@@ -72,7 +73,26 @@ export function makeFakeAdmin() {
 
   const admin = {
     from: (t: string) => new Q(t),
-    rpc: async (name: string, args: Row) => { rpcCalls.push({ name, args }); return { data: args.p_points ?? 0, error: null }; },
+    rpc: async (name: string, args: Row) => {
+      rpcCalls.push({ name, args });
+      if (name === "apply_guess") {
+        // Mirrors public.apply_guess. The body is synchronous, so it is atomic like the row lock.
+        const fail = (message: string) => ({ data: null, error: { message } });
+        const g = tables.games.find((x) => x.id === args.p_game);
+        if (!g) return fail("not_found");
+        if (g.status !== "playing") return fail("not_playing");
+        const slot = g.player1_id === args.p_player ? 0 : g.player2_id === args.p_player ? 1 : -1;
+        if (slot < 0) return fail("not_member");
+        if (g.current_turn !== slot) return fail("not_your_turn");
+        const mine = tables.moves.filter((m) => m.game_id === args.p_game);
+        const move_number = mine.reduce((n, m) => Math.max(n, m.move_number), 0) + 1;
+        tables.moves.push({ ...defaults("moves"), game_id: args.p_game, player_id: args.p_player, guess: args.p_guess, dead: args.p_dead, wounded: args.p_wounded, move_number });
+        const turn_started_at = new Date().toISOString();
+        Object.assign(g, { current_turn: args.p_next_turn, final_turn: args.p_final, turn_started_at });
+        return { data: [{ move_number, turn_started_at }], error: null };
+      }
+      return { data: args.p_points ?? 0, error: null };
+    },
     auth: {
       getUser: async (token: string) =>
         token.startsWith("tok-") ? { data: { user: { id: token.slice(4), is_anonymous: true } }, error: null } : { data: { user: null }, error: { message: "bad" } },

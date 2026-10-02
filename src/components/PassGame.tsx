@@ -5,6 +5,8 @@ import { applyGuess, newMatch, scoreGuess, skipTurn } from "@/lib/game";
 import type { MatchState, TranscriptEvent } from "@/lib/game";
 import { finishScored, startScored, type FinishResult } from "@/lib/scoring-client";
 import { useCountdown } from "@/hooks/useCountdown";
+import { useGuardWhile } from "@/lib/leaveGuard";
+import { recordGameEnd } from "@/lib/progress";
 import { useSpeech } from "@/hooks/useSpeech";
 import CodeInput from "./CodeInput";
 import Confetti from "./Confetti";
@@ -33,17 +35,19 @@ export default function PassGame({ settings, names }: { settings: Settings; name
   const [flash, setFlash] = useState(0);
   const [scored, setScored] = useState<FinishResult | null>(null);
   const { line, speak } = useSpeech();
-  const serverId = useRef<string | null>(null);
+  const startP = useRef<Promise<string | null> | null>(null);
   const events = useRef<TranscriptEvent[]>([]);
   const [round, setRound] = useState(0);
 
+  useGuardWhile(stage === "play" && match.winner === null);
   const turn = match.turn;
   const active = stage === "play" && ready && !last && match.winner === null;
 
   const finish = (m: MatchState) => {
     if (m.winner === null) return;
-    void finishScored(serverId.current, secrets, events.current).then(setScored);
+    void (startP.current ?? Promise.resolve(null)).then((id) => finishScored(id, secrets, events.current)).then(setScored);
     speak(m.winner === 1 ? "lose" : "win");
+    recordGameEnd({ mode: "pass", outcome: m.winner === 0 ? "win" : m.winner === 1 ? "lose" : "draw", guesses: m.moves[0].length, length });
   };
 
   const onGuess = (guess: string) => {
@@ -82,7 +86,7 @@ export default function PassGame({ settings, names }: { settings: Settings; name
     if (secretTurn === 0) return setSecretTurn(1);
     setStage("play");
     events.current = [];
-    void startScored("pass", length).then((id) => (serverId.current = id));
+    startP.current = startScored("pass", length);
   };
 
   const rematch = () => {
@@ -123,7 +127,7 @@ export default function PassGame({ settings, names }: { settings: Settings; name
             </div>
           ))}
         </div>
-        {scored && <div className="card p-3 w-full" role="status">{scored.rejected ? "Game too short to count for points." : <>{names[0]} gets <b className="text-gold text-xl"><AnimatedNumber prefix="+" value={scored.points} /> KPAI Points</b> 🏆</>}</div>}
+        {scored && <div className="card p-3 w-full" role="status">{scored.rejected ? "This one no count for points (too quick or too lucky)." : <>{names[0]} gets <b className="text-gold text-xl"><AnimatedNumber prefix="+" value={scored.points} /> KPAI Points</b> 🏆</>}</div>}
         <div className="grid grid-cols-2 gap-3 w-full">
           <button className="btn btn-green" onClick={rematch}>Rematch</button>
           <Link href="/" className="btn btn-dark">Back home</Link>
